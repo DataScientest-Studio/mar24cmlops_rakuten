@@ -30,7 +30,7 @@ class TextLSTMModel:
         self.tokenizer.fit_on_texts(X_train["description"])
 
         tokenizer_config = self.tokenizer.to_json()
-        with open("models/tokenizer_config.json", "w", encoding="utf-8") as json_file:
+        with open("models/model_parameters/tokenizer_config.json", "w", encoding="utf-8") as json_file:
             json_file.write(tokenizer_config)
 
         train_sequences = self.tokenizer.texts_to_sequences(X_train["description"])
@@ -75,7 +75,7 @@ class TextLSTMModel:
         self.model.fit(
             [train_padded_sequences],
             tf.keras.utils.to_categorical(y_train, num_classes=27),
-            epochs=1,
+            epochs=10,
             batch_size=32,
             validation_data=(
                 [val_padded_sequences],
@@ -155,7 +155,7 @@ class ImageVGG16Model:
 
         self.model.fit(
             train_generator,
-            epochs=1,
+            epochs=10,
             validation_data=val_generator,
             callbacks=vgg_callbacks,
         )
