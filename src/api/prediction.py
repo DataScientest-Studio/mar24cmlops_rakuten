@@ -21,7 +21,7 @@ nltk.download("wordnet")
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words("french"))
 
-with open("src/train_model/models/model_parameters/mapper.json", "r") as json_file:
+with open("src/models/model_parameters/mapper.json", "r") as json_file:
     mapper = json.load(json_file)
 
 def load_text_model(pathway : str):
@@ -55,7 +55,7 @@ def text_predict(entry):
     Text prediction
     Returns: [prdtypecode,sequence of probabilities]
      """
-    with open("src/train_model/models/model_parameters/tokenizer_config.json", "r", encoding="utf-8") as json_file:
+    with open("src/models/model_parameters/tokenizer_config.json", "r", encoding="utf-8") as json_file:
         tokenizer_config = json_file.read()
     tokenizer = keras.preprocessing.text.tokenizer_from_json(tokenizer_config)
 
@@ -74,7 +74,7 @@ def text_predict(entry):
 def load_vgg16_model(pathway : str):
     return keras.models.load_model("models/best_vgg16_model.h5")
 
-def image_predict(imageid : str = None, productid : str = None, directory : str =None, nouveau : str = None, picture = None):
+def image_predict(imageid : int = None, productid : int = None, directory : str =None, nouveau : str = None, picture = None):
     """
     Image prediction following 2 ways :
         _with the directory where the image named following imageid and productid is stored
@@ -82,6 +82,8 @@ def image_predict(imageid : str = None, productid : str = None, directory : str 
         _with un object PIL image
     Returns : [prdtypecode,sequence of probabilities]
     """
+    imageid=str(imageid)
+    productid=str(productid)
     imagepath=f"{directory}/image_{imageid}_product_{productid}.jpg"
     if nouveau is not None:
         imagepath=nouveau
@@ -99,7 +101,7 @@ def image_predict(imageid : str = None, productid : str = None, directory : str 
     final_prediction = np.argmax(vgg16_proba)
     return [mapper[str(final_prediction)],vgg16_proba]
 
-def predict(entry : str, imageid : str = None, productid : str = None, directory : str =None, nouveau : str = None):
+def predict(entry : str, imageid : int = None, productid : int = None, directory : str =None, nouveau : str = None):
     """
     Prediction from both designation and image
     Returns: prdtypecode

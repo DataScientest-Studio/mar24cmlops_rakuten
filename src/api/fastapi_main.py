@@ -6,13 +6,14 @@ import duckdb
 import uvicorn
 import os
 from aws_utils.make_db import download_db_from_s3
+from prediction import text_predict, image_predict, predict
 
 # Model for listing
 class Listing(BaseModel):
     description: str
     designation: str
     user_prdtypecode: int
-    imageid: int
+    imageid: int            # Prévoir de le changer (fichier image direct)
     
 # Define OAuth2 password bearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -149,6 +150,42 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
     listing_id_added = conn.execute(sql).fetchall()[0][0]
 
     return {"message": f"Listing {listing_id_added} added successfully"}
+
+@app.post("/prediction_text")
+async def prediction_text(designation : str, current_user: dict = Depends(get_current_user)):
+    """
+    Endpoint test for verify the functionality of the module prediction.py
+    Args :
+        designation.
+        current_user (dict): Dictionary containing current user information.
+    Returns:
+        the predicted prdtypecode
+    """
+    return {"Prediction text" : text_predict(designation)[0]}
+
+@app.post("/prediction_image")
+async def prediction_image(imageid : int, productid : int, current_user: dict = Depends(get_current_user)):
+    """
+    Endpoint test for verify the functionality of the module prediction.py
+    Args :
+        imageid and productid : to check an already recorded image.
+        current_user (dict): Dictionary containing current user information.
+    Returns:
+        the predicted prdtypecode
+    """
+    return {"Prediction image" : image_predict(imageid=imageid, productid=productid)[0]}
+
+@app.post("/prediction")
+async def prediction_test(designation : str, imageid : int, productid : int, current_user: dict = Depends(get_current_user)):
+    """
+    Endpoint test for verify the functionality of the module prediction.py
+    Args :
+        listing (Listing): Listing information to be added.
+        current_user (dict): Dictionary containing current user information.
+    Returns:
+        the predicted prdtypecode
+    """
+    return {"Predicted rdtypecode" : predict(entry=designation, imageid=imageid, productid=productid)}
 
 if __name__ == "__main__":
     
