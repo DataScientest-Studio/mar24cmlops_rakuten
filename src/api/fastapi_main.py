@@ -6,7 +6,7 @@ import duckdb
 import uvicorn
 import os
 from aws_utils.make_db import download_db_from_s3
-from prediction import text_predict, image_predict, predict
+from src.api.prediction import text_predict, image_predict, predict
 
 # Model for listing
 class Listing(BaseModel):
