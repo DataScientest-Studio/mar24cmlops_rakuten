@@ -6,7 +6,7 @@ import duckdb
 import uvicorn
 import os
 from aws_utils.make_db import download_db_from_s3
-from src.api.prediction import text_predict, image_predict, predict
+from prediction import text_predict, image_predict, predict
 
 # Model for listing
 class Listing(BaseModel):
@@ -164,7 +164,7 @@ async def prediction_text(designation : str, current_user: dict = Depends(get_cu
     return {"Prediction text" : text_predict(designation)[0]}
 
 @app.post("/prediction_image")
-async def prediction_image(imageid : int, productid : int, current_user: dict = Depends(get_current_user)):
+async def prediction_image(imageid : int, productid : int, directory : str, current_user: dict = Depends(get_current_user)):
     """
     Endpoint test for verify the functionality of the module prediction.py
     Args :
@@ -173,10 +173,10 @@ async def prediction_image(imageid : int, productid : int, current_user: dict = 
     Returns:
         the predicted prdtypecode
     """
-    return {"Prediction image" : image_predict(imageid=imageid, productid=productid)[0]}
+    return {"Prediction image" : image_predict(imageid=imageid, productid=productid,directory=directory)[0]}
 
 @app.post("/prediction")
-async def prediction_test(designation : str, imageid : int, productid : int, current_user: dict = Depends(get_current_user)):
+async def prediction_test(designation : str, imageid : int, productid : int, directory : str, current_user: dict = Depends(get_current_user)):
     """
     Endpoint test for verify the functionality of the module prediction.py
     Args :
@@ -185,7 +185,7 @@ async def prediction_test(designation : str, imageid : int, productid : int, cur
     Returns:
         the predicted prdtypecode
     """
-    return {"Predicted rdtypecode" : predict(entry=designation, imageid=imageid, productid=productid)}
+    return {"Predicted rdtypecode" : predict(entry=designation, imageid=imageid, productid=productid, directory=directory)}
 
 if __name__ == "__main__":
     

@@ -21,7 +21,7 @@ nltk.download("wordnet")
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words("french"))
 
-with open("src/models/model_parameters/mapper.json", "r") as json_file:
+with open("src/train_model_legacy/models/model_parameters/mapper.json", "r") as json_file:
     mapper = json.load(json_file)
 
 def load_text_model(pathway : str):
@@ -55,7 +55,7 @@ def text_predict(entry):
     Text prediction
     Returns: [prdtypecode,sequence of probabilities]
      """
-    with open("src/models/model_parameters/tokenizer_config.json", "r", encoding="utf-8") as json_file:
+    with open("src/train_model_legacy/models/model_parameters/tokenizer_config.json", "r", encoding="utf-8") as json_file:
         tokenizer_config = json_file.read()
     tokenizer = keras.preprocessing.text.tokenizer_from_json(tokenizer_config)
 
@@ -71,8 +71,11 @@ def text_predict(entry):
     
     return [mapper[str(final_prediction)],lstm_proba] 
 
-def load_vgg16_model(pathway : str):
-    return keras.models.load_model("models/best_vgg16_model.h5")
+def load_vgg16_model(pathway : str = None):
+    if pathway is None:
+        return keras.models.load_model("models/best_vgg16_model.h5")
+    else:
+        return keras.models.load_model(pathway)
 
 def image_predict(imageid : int = None, productid : int = None, directory : str =None, nouveau : str = None, picture = None):
     """
@@ -94,7 +97,7 @@ def image_predict(imageid : int = None, productid : int = None, directory : str 
         img=picture
     img_array = img_to_array(img)        
     img_array = preprocess_input(img_array)
-    images = tf.convert_to_tensor([img_array], dtype=tf.float32) # vérifier si le passage en liste est correct
+    images = tf.convert_to_tensor([img_array], dtype=tf.float32) 
 
     vgg16=keras.models.load_model("models/best_vgg16_model.h5")
     vgg16_proba = vgg16.predict([images]) 
