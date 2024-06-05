@@ -96,3 +96,16 @@ target/
 
 # Artifacts
 # /models/
+
+# Ignore all content in the models directory
+models/*
+# Except production_model and staging_models directories
+!models/production_model/
+!models/staging_models/
+# Ignore all files in these directories
+models/production_model/*
+models/staging_models/*
+# Except README.md files
+!models/production_model/README.md
+!models/staging_models/README.md
+!models/README.md
