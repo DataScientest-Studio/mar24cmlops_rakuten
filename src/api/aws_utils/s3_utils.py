@@ -1,5 +1,7 @@
 import boto3
 import configparser
+import os
+from aws_utils.security import decrypt_file
 
 def load_aws_cfg(file_path):
     """
@@ -11,8 +13,11 @@ def load_aws_cfg(file_path):
     Returns:
         dict: A dictionary containing 'aws_access_key_id', 'aws_secret_access_key', 'role_arn', and 'role_session_name'.
     """
+    decr_file = os.path.join(os.environ['AWS_CONFIG_FOLDER'],".aws_config_decr.ini")
+    decrypt_file(os.environ['KEY'], file_path, decr_file)
+    
     config = configparser.ConfigParser()
-    config.read(file_path)
+    config.read(decr_file)
     aws_cfg = {
         'aws_access_key_id': config.get('default', 'aws_access_key_id'),
         'aws_secret_access_key': config.get('default', 'aws_secret_access_key'),
@@ -99,6 +104,7 @@ def upload_to_s3(s3_conn, local_path, bucket_path):
     # Upload the file to S3
     s3_conn.upload_file(local_path, "rakutenprojectbucket", bucket_path)
     
+
 # if __name__ == "__main__":
     
 #     cfg_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/.aws/.aws_config.ini'
