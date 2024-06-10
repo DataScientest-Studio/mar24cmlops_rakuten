@@ -1,6 +1,6 @@
 import duckdb
 import pandas as pd
-from aws_utils.s3_utils import aws_sts_login, load_aws_cfg, s3_login, download_file, upload_file
+from aws_utils.s3_utils import create_s3_conn_from_creds, download_from_s3, upload_to_s3
 from datetime import datetime
 import numpy as np
 import os
@@ -68,60 +68,52 @@ def save_duckdb_to_parquet(duckdb_conn, db_file_path):
     """
     duckdb_conn.execute(f"EXPORT DATABASE '{db_file_path}' (FORMAT 'PARQUET')")
 
-def upload_db_to_s3(aws_config_path, file_path_db, bucket_name):
+def download_initial_db(cfg_path, local_path):
     """
-    Uploads a database file to the "db" folder in an S3 bucket.
+    Download the initialization database file from the S3 bucket.
 
     Args:
-        aws_config_path (str): Path to the AWS configuration file.
-        file_path_db (str): Path to the database file to upload.
-        bucket_name (str): Name of the S3 bucket.
-
-    Returns:
-        bool: True if the upload was successful, False otherwise.
+        cfg_path (str): The path to the AWS configuration file.
+        local_path (str): The local path where the database file should be downloaded.
     """
-    # Load AWS configuration from the specified file path
-    aws_config = load_aws_cfg(aws_config_path)
+    # Create an S3 connection
+    s3_conn = create_s3_conn_from_creds(cfg_path)
     
-    # Create an STS session with credentials
-    sts_session = aws_sts_login(**aws_config)
-    
-    # Create an S3 client with the STS session
-    s3_client = s3_login(sts_session)
-    
-    # Define the object name (S3 key) for the uploaded file
-    object_name = f"db/{os.path.basename(file_path_db)}"
-    
-    # Upload the database file to the S3 bucket
-    return upload_file(s3_client, file_path_db, bucket_name, object_name)
+    # Download the initialization database file
+    download_from_s3(s3_conn, 'db/rakuten_init.duckdb', local_path)
 
-def download_db_from_s3(aws_config_path, db_file_name, bucket_name, destination_path):
+def upload_db(cfg_path, local_path):
     """
-    Downloads a database file from the 'db' directory in an S3 bucket.
+    Upload the database file to the S3 bucket with datetime-based archiving.
 
     Args:
-        aws_config_path (str): Path to the AWS configuration file.
-        db_file_name (str): Name of the database file to download.
-        bucket_name (str): Name of the S3 bucket.
-        destination_path (str): Where to save the DB File
-
-    Returns:
-        bool: True if the download was successful, False otherwise.
+        cfg_path (str): The path to the AWS configuration file.
+        local_path (str): The local path of the database file to be uploaded.
     """
-    # Load AWS configuration from the specified file path
-    aws_config = load_aws_cfg(aws_config_path)
+    # Create an S3 connection
+    s3_conn = create_s3_conn_from_creds(cfg_path)
     
-    # Create an STS session with credentials
-    sts_session = aws_sts_login(**aws_config)
+    # Create a filename with datetime-based archiving
+    current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f'rakuten_init_{current_datetime}.duckdb'
     
-    # Create an S3 client with the STS session
-    s3_client = s3_login(sts_session)
+    # Upload the initialization database file with the datetime-based filename
+    upload_to_s3(s3_conn, local_path, f'db/{filename}')
+
+def init_db(duckdb_path):
     
-    # Define the object name (S3 key) for the database file
-    object_name = f"db/{db_file_name}"
-    
-    # Download the database file from the S3 bucket
-    return download_file(s3_client, object_name, bucket_name, file_path=destination_path)
+    cfg_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/.aws/.aws_config.ini'
+    s3_conn = create_s3_conn_from_creds(cfg_path)
+    download_from_s3(s3_conn,'X_train.csv','/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/X_train.csv')
+
+    listings_df = process_listing('/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/X_train.csv')
+    duckdb_conn = duckdb.connect(database=duckdb_path, read_only=False)
+    create_table_from_pd_into_duckdb(duckdb_conn, listings_df, 'fact_listings')
+
+    user_df = init_user_table()
+    create_table_from_pd_into_duckdb(duckdb_conn, user_df, 'dim_user')
+
+# init_db('/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/rakuten_db.duckdb')
 
 # Example Usage 
 
