@@ -95,45 +95,34 @@ def upload_db(cfg_path, local_path):
     
     # Create a filename with datetime-based archiving
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f'rakuten_init_{current_datetime}.duckdb'
+    filename = f'rakuten_{current_datetime}.duckdb'
     
     # Upload the initialization database file with the datetime-based filename
     upload_to_s3(s3_conn, local_path, f'db/{filename}')
 
 def init_db(duckdb_path):
+    """
+    Initialize the DuckDB database.
+
+    Returns:
+        None
+    """
+    cfg_path = os.environ['AWS_CONFIG_PATH']
+    data_path = os.environ['DATA_PATH']
+    duckdb_path = os.path.join(data_path, os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
+    init_listing_csv_path = os.path.join(data_path,'X_train.csv')
     
-    cfg_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/.aws/.aws_config.ini'
+    # Download initial data from S3
     s3_conn = create_s3_conn_from_creds(cfg_path)
-    download_from_s3(s3_conn,'X_train.csv','/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/X_train.csv')
-
-    listings_df = process_listing('/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/X_train.csv')
-    duckdb_conn = duckdb.connect(database=duckdb_path, read_only=False)
-    create_table_from_pd_into_duckdb(duckdb_conn, listings_df, 'fact_listings')
-
+    download_from_s3(s3_conn,'X_train.csv', init_listing_csv_path)
+    
+    # Process listing data and user data
+    listings_df = process_listing(init_listing_csv_path)
     user_df = init_user_table()
+    
+    # Connect to DuckDB
+    duckdb_conn = duckdb.connect(database=duckdb_path, read_only=False)
+    
+    # Create and populate tables
+    create_table_from_pd_into_duckdb(duckdb_conn, listings_df, 'fact_listings')
     create_table_from_pd_into_duckdb(duckdb_conn, user_df, 'dim_user')
-
-# init_db('/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/rakuten_db.duckdb')
-
-# Example Usage 
-
-# (Init of Rakuten DB, saved on S3)
-
-# listing_df = process_listing('X_train.csv')
-# user_df = init_user_table()
-# db_file_path = '/home/jc/Workspace/mar24cmlops_rakuten/data/rakuten_db.duckdb'
-# con = duckdb.connect(database=db_file_path, read_only=False)
-# create_table_from_pd_into_duckdb(con, listing_df, 'fact_listings')
-# create_table_from_pd_into_duckdb(con, user_df, 'dim_user')
-# con.close()
-
-# (Download Rakuten DB from S3)
-# download_db_from_s3('/home/jc/Workspace/mar24cmlops_rakuten/.aws/.aws_config', 
-#                     'rakuten_db.duckdb',
-#                     'rakutenprojectbucket',
-#                     '/home/jc/Workspace/mar24cmlops_rakuten/rakuten_db.duckdb')
-
-# (Upload Rakuten DB from S3)
-# upload_db_to_s3('/home/jc/Workspace/mar24cmlops_rakuten/.aws/.aws_config', 
-#                 '/home/jc/Workspace/mar24cmlops_rakuten/data/rakuten_db.duckdb',
-#                 'rakutenprojectbucket')
