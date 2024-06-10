@@ -156,6 +156,8 @@ if __name__ == "__main__":
     s3_init_db_path = os.environ['S3_INIT_DB_PATH']
     aws_config_path = os.environ['AWS_CONFIG_PATH']
     bucket_name = os.environ['S3_BUCKET']
+    print(os.environ['AWS_CONFIG_PATH'])
+    print(type(os.environ['AWS_CONFIG_PATH']))
     
     if not os.path.isfile(duckdb_path):
         print('No Database Found')

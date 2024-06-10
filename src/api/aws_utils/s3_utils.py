@@ -74,8 +74,12 @@ def load_aws_cfg(cfg_path):
     Returns:
         Dictionary containing AWS configurations
     """
+    print(cfg_path)
     cfg_file = open(cfg_path,"r")
+    print('file opened')
     cfg = json.load(cfg_file)
+    print('file loader')
+    print(type(cfg))
     return cfg
 
 def download_file(s3_client, object_name, bucket, file_path = None):
@@ -117,3 +121,11 @@ def download_file(s3_client, object_name, bucket, file_path = None):
 
 # Download a file from the S3 bucket 
 # download_file(s3_client, file_path, bucket, object_name=None)
+
+if __name__ == '__main__':
+    aws_config = load_aws_cfg('/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/aws/aws_config')
+
+
+    sts_session = aws_sts_login(**aws_config)
+
+    s3_client = s3_login(sts_session)
