@@ -26,16 +26,20 @@ botocore==1.34.117
 certifi==2024.6.2
     # via httpcore
     # via httpx
+cffi==1.16.0
+    # via cryptography
 click==8.1.7
     # via typer
     # via uvicorn
 colorama==0.4.6
     # via awscli
+cryptography==42.0.8
+    # via mar24cmlops-rakuten
 dnspython==2.6.1
     # via email-validator
 docutils==0.16
     # via awscli
-duckdb==0.10.3
+duckdb==1.0.0
     # via mar24cmlops-rakuten
 email-validator==2.1.1
     # via fastapi
@@ -75,6 +79,8 @@ pandas==2.2.2
     # via mar24cmlops-rakuten
 pyasn1==0.6.0
     # via rsa
+pycparser==2.22
+    # via cffi
 pydantic==2.7.2
     # via fastapi
 pydantic-core==2.18.3

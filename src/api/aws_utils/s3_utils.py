@@ -1,119 +1,123 @@
 import boto3
-import logging
-from botocore.exceptions import ClientError
+import configparser
 import os
-import json
+from aws_utils.security import decrypt_file
 
-def aws_sts_login(ARN, SessionName):
+def load_aws_cfg(file_path):
     """
-    Function to assume an AWS role and create an AWS STS session.
+    Load AWS credentials and role parameters from a configuration file.
+
     Args:
-        ARN: Amazon Resource Name of the role to assume
-        SessionName: Name of the session to assume
+        file_path (str): The path to the configuration file.
 
     Returns:
-        boto3 session with new credentials
+        dict: A dictionary containing 'aws_access_key_id', 'aws_secret_access_key', 'role_arn', and 'role_session_name'.
     """
-    session = boto3.Session()
-
-    sts_client = session.client("sts")
-
-    response = sts_client.assume_role(
-                                RoleArn=ARN,
-                                RoleSessionName=SessionName
-                                )
+    decr_file = os.path.join(os.environ['AWS_CONFIG_FOLDER'],".aws_config_decr.ini")
+    decrypt_file(os.environ['KEY'], file_path, decr_file)
     
-    sts_log_session = boto3.Session(aws_access_key_id=response['Credentials']['AccessKeyId'],
-                      aws_secret_access_key=response['Credentials']['SecretAccessKey'],
-                      aws_session_token=response['Credentials']['SessionToken'])
-    
-    return sts_log_session
+    config = configparser.ConfigParser()
+    config.read(decr_file)
+    aws_cfg = {
+        'aws_access_key_id': config.get('default', 'aws_access_key_id'),
+        'aws_secret_access_key': config.get('default', 'aws_secret_access_key'),
+        'role_arn': config.get('default', 'role_arn'),
+        'role_session_name': config.get('default', 'role_session_name')
+    }
+    return aws_cfg
 
-def s3_login (sts_log_session):
+def assume_role(aws_access_key_id, aws_secret_access_key, role_arn, role_session_name):
     """
-    Function to create an S3 client with the logged STS session.
+    Assume an IAM role and obtain temporary credentials.
+
     Args:
-        sts_log_session: STS session with temporary credentials :return: S3 client
-    Returns:
-        boto3 session with new credentials
-    """
-    s3_client = sts_log_session.client("s3")
-    return s3_client
-
-def upload_file(s3_client, file_path, bucket, object_name=None):
-    """
-    Upload a file to an S3 bucket
-    Args:
-        file_path: File to upload
-        bucket: Bucket to upload to
-        object_name: S3 object name. If not specified then file_path is used
-    Returns: 
-        True if file was uploaded, else False
-    """
-
-    # If S3 object_name was not specified, use file_path
-    
-    if object_name is None:
-        object_name = os.path.basename(file_path)
-
-    # Upload the file
-    
-    try:
-        response = s3_client.upload_file(file_path, bucket, object_name)
-    except ClientError as e:
-        logging.error(e)
-        return False
-    return True
-
-def load_aws_cfg(cfg_path):
-    """
-    Function to load AWS configuration from a JSON file.
-    Args:
-        cfg_path: Path to configuration file
+        aws_access_key_id (str): The AWS access key ID.
+        aws_secret_access_key (str): The AWS secret access key.
+        role_arn (str): The ARN of the role to assume.
+        role_session_name (str): The name of the role session.
 
     Returns:
-        Dictionary containing AWS configurations
+        dict: A dictionary containing temporary credentials.
     """
-    cfg_file = open(cfg_path,"r")
-    cfg = json.load(cfg_file)
-    return cfg
+    client = boto3.client(
+        'sts',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key
+    )
+    response = client.assume_role(
+        RoleArn=role_arn,
+        RoleSessionName=role_session_name
+    )
+    return response['Credentials']
 
-def download_file(s3_client, object_name, bucket, file_path = None):
+def create_sts_session(credentials):
     """
-    Function to download a file from an S3 bucket.
+    Create a Boto3 session with temporary credentials.
+
     Args:
-        s3_client: S3 client
-        object_name: S3 object name. If not specified, use file_path.
-        bucket: S3 bucket name
-        file_path: Destination path of the downloaded file
+        credentials (dict): A dictionary containing 'AccessKeyId', 'SecretAccessKey', and 'SessionToken'.
 
     Returns:
-        True if download successful, False otherwise
+        boto3.Session: A Boto3 session initialized with the temporary credentials.
     """
-    # If file_path was not specified, use current directory 
-    if file_path is None:
-        file_path = os.getcwd() + f'/{object_name}'
+    return boto3.Session(
+        aws_access_key_id=credentials['AccessKeyId'],
+        aws_secret_access_key=credentials['SecretAccessKey'],
+        aws_session_token=credentials['SessionToken']
+    )
 
-    # Download the file
-    try:
-        response = s3_client.download_file(bucket,object_name,file_path)
-    except ClientError as e:
-        logging.error(e)
-        return False
-    return True
+def create_s3_conn_from_creds(cfg):
+    
+    aws_cfg = load_aws_cfg(cfg)
+    
+    credentials = assume_role(
+        aws_cfg['aws_access_key_id'], 
+        aws_cfg['aws_secret_access_key'], 
+        aws_cfg['role_arn'], 
+        aws_cfg['role_session_name']
+        )
+    
+    sts_session = create_sts_session(credentials)
+    
+    return sts_session.client('s3')
+    
+def download_from_s3(s3_conn ,bucket_path, local_path):
+    """
+    Download a file from an S3 bucket to a local path.
 
-# Example Use :
-# Loading AWS configuration from a file
-# aws_config = load_aws_cfg("/home/jc/Workspace/mar24cmlops_rakuten/.aws_config")
+    Args:
+        bucket_path (str): The path to the file in the S3 bucket, relative to the bucket root.
+        local_path (str): The local path where the file should be downloaded.
 
-# Creating an STS session with credentials
-# sts_session = aws_sts_login(**aws_config)
+    """
+    # Download the file from S3
+    s3_conn.download_file("rakutenprojectbucket", bucket_path, local_path)
+    
+def upload_to_s3(s3_conn, local_path, bucket_path):
+    """
+    Upload a file from a local path to an S3 bucket.
 
-# Creating an S3 client with the STS session
-# s3_client = s3_login(sts_session)
+    Args:
+        local_path (str): The local path of the file to be uploaded.
+        bucket_path (str): The path in the S3 bucket where the file should be uploaded, relative to the bucket root.
+    """
+    # Upload the file to S3
+    s3_conn.upload_file(local_path, "rakutenprojectbucket", bucket_path)
+    
 
-# Upload a file to the S3 bucket 
-# upload_file(s3_client, file_path, bucket, object_name=None)
+# if __name__ == "__main__":
+    
+#     cfg_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/.aws/.aws_config.ini'
+#     s3_conn = create_s3_conn_from_creds(cfg_path)
+    
+#     download_from_s3(
+#         s3_conn = s3_conn,
+#         bucket_path = 'imgtest.jpg',
+#         local_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/imgtest.jpg'
+#     )
 
-# Download a file from the S3 bucket 
-# download_file(s3_client, file_path, bucket, object_name=None)
+#     upload_to_s3(
+#         s3_conn = s3_conn, 
+#         local_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/imgtest.jpg',
+#         bucket_path = 'imgtest.jpg'
+#     )
