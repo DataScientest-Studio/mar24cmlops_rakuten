@@ -14,7 +14,7 @@ ENV DATA_PATH=/app/data/
 ENV S3_INIT_DB_PATH=rakuten_init.duckdb
 ENV RAKUTEN_DB_NAME=rakuten_db.duckdb
 ENV S3_BUCKET=rakutenprojectbucket
-ENV KEY=2GG5s08SC49gwj8vBe0Ni-mDJP907MPMt012MX1Tkkg=
+ENV KEY=ZDDVMAi_s9Jn03haGGSzoDVxPtd99XM2593PyNsyBbc=
 
 EXPOSE 8001
 
