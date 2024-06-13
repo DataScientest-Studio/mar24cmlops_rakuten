@@ -25,10 +25,10 @@ stop_words = set(stopwords.words("french"))
 with open("src/train_model_legacy/models/model_parameters/mapper.json", "r") as json_file:
     mapper = json.load(json_file)
 
-vgg16=keras.models.load_model("models/best_vgg16_model.h5")
-lstm=keras.models.load_model("models/best_lstm_model.h5")
+vgg16=keras.models.load_model("models/production_model/best_vgg16_model.h5")
+lstm=keras.models.load_model("models/production_model/best_lstm_model.h5")
 best_weights=None
-with open("models/best_weights.pkl","rb") as file :
+with open("models/production_model/best_weights.pkl","rb") as file :
     best_weights=pickle.load(file)
 
 def new_model(pathway : str = None):  # A tester
@@ -42,17 +42,17 @@ def new_model(pathway : str = None):  # A tester
     global vgg16, lstm, best_weights  # Non nécessaire si ce sont des objets
     if new_model is not None:
         # Verifies the existence of the model and downloads it else raise an exceptio
-        if os.path.isdir(f"models/staging/{pathway}"):
-            vgg16=keras.models.load_model(f"models/satging/{pathway}/best_vgg16_model.h5")
-            lstm=keras.models.load_model("models/staging/{pathway}/best_lstm_model.h5")
-            with open("models/staging/{pathway}/best_weights.pkl","rb") as file :
+        if os.path.isdir(f"models/staging_models/{pathway}"):
+            vgg16=keras.models.load_model(f"models/staging_models/{pathway}/best_vgg16_model.h5")
+            lstm=keras.models.load_model("models/staging_models/{pathway}/best_lstm_model.h5")
+            with open("models/staging_models/{pathway}/best_weights.pkl","rb") as file :
                 best_weights=pickle.load(file)
         else:
             raise Exception("Bad location for a model")
     # By default, without any argument, uses the model in production
     else :
-        vgg16=keras.models.load_model("models/best_vgg16_model.h5")
-        lstm=keras.models.load_model("models/best_lstm_model.h5")
+        vgg16=keras.models.load_model("models/production_model/best_vgg16_model.h5")
+        lstm=keras.models.load_model("models/production_model/best_lstm_model.h5")
         with open("models/best_weights.pkl","rb") as file :
             best_weights=pickle.load(file)
 
@@ -134,7 +134,6 @@ def image_predict_object(picture):
     Returns : [prdtypecode,sequence of probabilities]
     """
     img=picture
-    img.save('C_test1.jpg') ##############
     img_array = img_to_array(img)
     img_array = preprocess_input(img_array)
     images = tf.convert_to_tensor([img_array], dtype=tf.float32)
@@ -142,7 +141,7 @@ def image_predict_object(picture):
     final_prediction = np.argmax(vgg16_proba)
     return [mapper[str(final_prediction)],vgg16_proba]
 
-# FOnction qui sera inutile dans la version finale
+# Fonction qui sera inutile dans la version finale
 def predict(entry : str, imageid : int = None, productid : int = None, directory : str =None, new_image : str = None):
     """
     Prediction from both designation and image
