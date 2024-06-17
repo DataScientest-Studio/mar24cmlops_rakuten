@@ -6,6 +6,11 @@ import duckdb
 import uvicorn
 import os
 from aws_utils.make_db import download_initial_db
+from prediction12 import text_predict, image_predict, predict, image_predict_object, predictionT
+from fastapi import UploadFile, File
+from io import BytesIO
+from PIL import Image
+from tensorflow.keras.preprocessing.image import load_img
 
 # Model for listing
 class Listing(BaseModel):
@@ -149,6 +154,14 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
     listing_id_added = conn.execute(sql).fetchall()[0][0]
 
     return {"message": f"Listing {listing_id_added} added successfully"}
+
+@app.post('/predictionT')
+async def test_image4(designation : str =None, imageid : int = None, productid : int = None, directory : str = 'data/preprocessed/image_train', new_image : str = None, file : UploadFile | None = None):
+    img_context=None
+    if file is not None :
+        img_context= await file.read()
+    return {'prediction' : predictionT(designation=designation, imageid=imageid,productid=productid,directory=directory,new_image=new_image,file=img_context)}
+
 
 if __name__ == "__main__":
     
