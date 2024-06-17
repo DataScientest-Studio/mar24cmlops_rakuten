@@ -28,6 +28,7 @@ with open("src/train_model_legacy/models/model_parameters/mapper.json", "r") as 
 vgg16=keras.models.load_model("models/production_model/best_vgg16_model.h5")
 lstm=keras.models.load_model("models/production_model/best_lstm_model.h5")
 best_weights=None
+
 with open("models/production_model/best_weights.pkl","rb") as file :
     best_weights=pickle.load(file)
 

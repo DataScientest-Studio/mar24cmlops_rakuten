@@ -135,5 +135,5 @@ async def prediction_test(designation : str, imageid : int, productid : int, dir
     return {"Predicted prdtypecode" : predict(entry=designation, imageid=imageid, productid=productid, directory=directory)}
 
 if __name__ == "__main__":
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8001)

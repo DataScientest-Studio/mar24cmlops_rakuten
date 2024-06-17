@@ -12,6 +12,11 @@ dependencies = [
     "awscli>=1.32.117",
     "duckdb>=1.0.0",
     "cryptography>=42.0.8",
+    "nltk>=3.8.1",
+    "beautifulsoup4>=4.12.3",
+    "tensorflow==2.15.0",
+    "pillow>=10.3.0",
+    "python-multipart>=0.0.9",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
