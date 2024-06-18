@@ -99,6 +99,7 @@ jmespath==1.0.1
     # via botocore
 joblib==1.4.2
     # via nltk
+    # via scikit-learn
 keras==2.15.0
     # via tensorflow
 libclang==18.1.1
@@ -121,6 +122,8 @@ numpy==1.26.4
     # via ml-dtypes
     # via opt-einsum
     # via pandas
+    # via scikit-learn
+    # via scipy
     # via tensorboard
     # via tensorflow
 oauthlib==3.2.2
@@ -179,6 +182,10 @@ rsa==4.7.2
 s3transfer==0.10.1
     # via awscli
     # via boto3
+scikit-learn==1.5.0
+    # via mar24cmlops-rakuten
+scipy==1.13.1
+    # via scikit-learn
 setuptools==70.0.0
     # via tensorboard
     # via tensorflow
@@ -209,6 +216,8 @@ tensorflow-io-gcs-filesystem==0.37.0
     # via tensorflow
 termcolor==2.4.0
     # via tensorflow
+threadpoolctl==3.5.0
+    # via scikit-learn
 tqdm==4.66.4
     # via nltk
 typer==0.12.3
