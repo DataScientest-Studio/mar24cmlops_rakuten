@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import os
-from prediction import predictionT
+from prediction import predict_with_unified_interface
 from fastapi import UploadFile, File
 from io import BytesIO
 from PIL import Image
@@ -34,7 +34,7 @@ async def test_image4(designation : str =None, imageid : int = None, productid :
     img_context=None
     if file is not None :
         img_context= await file.read()
-    return {'prediction' : predictionT(designation=designation, imageid=imageid,productid=productid,directory=directory,new_image=new_image,file=img_context)}
+    return {'prediction' : predict_with_unified_interface(designation=designation, imageid=imageid,productid=productid,directory=directory,new_image=new_image,file=img_context)}
 
 
 if __name__ == "__main__":
