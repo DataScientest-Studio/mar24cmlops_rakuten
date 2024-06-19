@@ -6,7 +6,7 @@ import duckdb
 import uvicorn
 import os
 from aws_utils.make_db import download_initial_db
-from prediction12 import text_predict, image_predict, predict, image_predict_object, predictionT
+from prediction import predict_with_unique_interface
 from fastapi import UploadFile, File
 from io import BytesIO
 from PIL import Image
@@ -156,11 +156,11 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
     return {"message": f"Listing {listing_id_added} added successfully"}
 
 @app.post('/predictionT')
-async def test_image4(designation : str =None, imageid : int = None, productid : int = None, directory : str = 'data/preprocessed/image_train', new_image : str = None, file : UploadFile | None = None):
+async def prediction(designation : str =None, imageid : int = None, productid : int = None, directory : str = 'data/preprocessed/image_train', new_image : str = None, file : UploadFile | None = None):
     img_context=None
     if file is not None :
         img_context= await file.read()
-    return {'prediction' : predictionT(designation=designation, imageid=imageid,productid=productid,directory=directory,new_image=new_image,file=img_context)}
+    return {'prediction' : predict_with_unique_interface(designation=designation, imageid=imageid,productid=productid,directory=directory,new_image=new_image,file=img_context)}
 
 
 if __name__ == "__main__":
