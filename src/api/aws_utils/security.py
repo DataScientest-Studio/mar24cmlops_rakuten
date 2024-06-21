@@ -1,4 +1,5 @@
 from cryptography.fernet import Fernet
+from passlib.hash import bcrypt
 
 def generate_key():
     """
@@ -47,3 +48,16 @@ def decrypt_file(key, input_file, output_file):
     decrypted_data = fernet.decrypt(encrypted_data)
     with open(output_file, "wb") as file:
         file.write(decrypted_data)
+        
+def verify_password(plain_password, hashed_password):
+    """
+    Vérifie si le mot de passe en texte clair correspond au mot de passe haché.
+
+    Args:
+    - plain_password (str): Mot de passe en texte clair à vérifier.
+    - hashed_password (str): Mot de passe haché à comparer.
+
+    Returns:
+    - bool: True si le mot de passe correspond, False sinon.
+    """
+    return bcrypt.verify(plain_password, hashed_password)

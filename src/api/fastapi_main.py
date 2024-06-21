@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from typing import List
 import duckdb
 import uvicorn
 import os
 from aws_utils.make_db import download_initial_db
+from dotenv import load_dotenv
+from passlib.hash import bcrypt
 
 # Model for listing
 class Listing(BaseModel):
@@ -13,7 +14,7 @@ class Listing(BaseModel):
     designation: str
     user_prdtypecode: int
     imageid: int
-    
+
 # Define OAuth2 password bearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -29,11 +30,13 @@ def authenticate_user(username: str, password: str):
     Returns:
         bool: True if the user is authenticated, False otherwise.
     """
-    cursor = conn.execute(f"SELECT * FROM dim_user WHERE username = '{username}' AND hashed_password = '{password}'")
+    cursor = conn.execute(f"SELECT * FROM dim_user WHERE username = '{username}'")
     result = cursor.fetchone()
     if not result:
         return False
-    return True
+    
+    hashed_password = result['hashed_password']
+    return bcrypt.verify(password, hashed_password)
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -87,7 +90,6 @@ async def read_listing(listing_id: int, current_user: dict = Depends(get_current
         dict: Dictionary containing listing description.
     """
     # Dummy logic to retrieve listing description based on listing_id
-    
     cols = ["designation", "description", 
             "user_prdtypecode", "model_prdtypecode", 
             "waiting_datetime","validate_datetime",
@@ -151,15 +153,11 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
     return {"message": f"Listing {listing_id_added} added successfully"}
 
 if __name__ == "__main__":
+    load_dotenv('.env/.env.development')
     
     aws_config_path = os.environ['AWS_CONFIG_PATH']
     duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
     rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
-    
-    # duckdb_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data'
-    # rakuten_db_name = 'rakuten_db.duckdb'
-    # rakuten_db_path = os.path.join(duckdb_path,rakuten_db_name)
-    # aws_config_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/.aws/.aws_config.ini'
     
     if not os.path.isfile(duckdb_path):
         print('No Database Found')

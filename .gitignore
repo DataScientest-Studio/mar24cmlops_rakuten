@@ -68,6 +68,12 @@ target/
 *.csv
 *.duckdb
 
+*.jpg
+*.zip
+*.jpg:Zone.Identifier
+*.zip:Zone.Identifier
+*.csv:Zone.Identifier
+
 # Pycharm
 .idea
 
