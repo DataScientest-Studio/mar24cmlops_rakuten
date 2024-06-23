@@ -21,17 +21,23 @@ nltk.download("wordnet")
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words("french"))
 
+# Modification of the pathways following the environnment
+prefix=None
+if os.getenv('DATA_PATH') is None:
+    prefix='.'
+else :
+    prefix='/app'
 # Loads the mapper between the return of the models and the associated prdtypecode
-with open("src/train_model_legacy/models/model_parameters/mapper.json", "r") as json_file:
+with open(os.path.join(prefix,"src/train_model_legacy/models/model_parameters/mapper.json"), "r") as json_file:
     mapper = json.load(json_file)
 
 # Loads the trained models for the text and image predictions
-vgg16=keras.models.load_model("models/production_model/best_vgg16_model.h5")
-lstm=keras.models.load_model("models/production_model/best_lstm_model.h5")
+vgg16=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.h5"))
+lstm=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.h5"))
 best_weights=None
 
 # Loads the weights for the concatenation of the results of the previous models
-with open("models/production_model/best_weights.pkl","rb") as file :
+with open(os.path.join(prefix,"models/production_model/best_weights.pkl"),"rb") as file :
     best_weights=pickle.load(file)
 
 def change_model(pathway : str = None):  # A tester
@@ -43,19 +49,19 @@ def change_model(pathway : str = None):  # A tester
         pathway : name of the folder in models/staging where the model resides
     """
     global vgg16, lstm, best_weights  # Non nécessaire si ce sont des objets
-    if new_model is not None:
+    if pathway is not None:
         # Verifies the existence of the model and downloads it else raise an exceptio
         if os.path.isdir(f"models/staging_models/{pathway}"):
-            vgg16=keras.models.load_model(f"models/staging_models/{pathway}/best_vgg16_model.h5")
-            lstm=keras.models.load_model(f"models/staging_models/{pathway}/best_lstm_model.h5")
-            with open(f"models/staging_models/{pathway}/best_weights.pkl","rb") as file :
+            vgg16=keras.models.load_model(os.path.join(prefix,f"models/staging_models/{pathway}/best_vgg16_model.h5"))
+            lstm=keras.models.load_model(os.path.join(prefix,f"models/staging_models/{pathway}/best_lstm_model.h5"))
+            with open(os.path.join(prefix,f"models/staging_models/{pathway}/best_weights.pkl"),"rb") as file :
                 best_weights=pickle.load(file)
         else:
             raise Exception("Bad location for a model")
     # By default, without any argument, uses the model in production
     else :
-        vgg16=keras.models.load_model("models/production_model/best_vgg16_model.h5")
-        lstm=keras.models.load_model("models/production_model/best_lstm_model.h5")
+        vgg16=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.h5"))
+        lstm=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.h5"))
         with open("models/best_weights.pkl","rb") as file :
             best_weights=pickle.load(file)
 
@@ -68,7 +74,7 @@ def text_predict(text):
     Returns:
         [prdtypecode,sequence of probabilities]
      """
-    with open("src/train_model_legacy/models/model_parameters/tokenizer_config.json", "r", encoding="utf-8") as json_file:
+    with open(os.path.join(prefix,"src/train_model_legacy/models/model_parameters/tokenizer_config.json"), "r", encoding="utf-8") as json_file:
         tokenizer_config = json_file.read()
     tokenizer = keras.preprocessing.text.tokenizer_from_json(tokenizer_config)
     # Removes all the non-alphabetic characters
@@ -101,7 +107,7 @@ def image_predict(imageid : int = None, productid : int = None, directory : str 
     imagepath=None
     # if imageid and productid specified
     if imageid is not None and productid is not None :
-        imagepath=os.path.join(directory,f"image_{imageid}_product_{productid}.jpg")
+        imagepath=os.path.join(prefix,os.path.join(directory,f"image_{imageid}_product_{productid}.jpg"))
     # if specified, new_image has the priority over imageid, productid and directory
     if new_image is not None:
         imagepath=new_image
@@ -155,7 +161,7 @@ def predict_with_unified_interface(designation : str =None, imageid : int = None
         lstm_return=text_predict(designation)
     # image prediction if (imageid and productid) or new_image provided
     if imageid is not None and productid is not None:
-        if os.path.isfile(os.path.join(directory,f"image_{imageid}_product_{productid}.jpg")) is False:
+        if os.path.isfile(os.path.join(prefix,os.path.join(directory,f"image_{imageid}_product_{productid}.jpg"))) is False:
             raise Exception("Mauvaises références pour retrouver l\'image")
         vgg16_return=image_predict(imageid=imageid,productid=productid,directory=directory)
     elif new_image is not None:
