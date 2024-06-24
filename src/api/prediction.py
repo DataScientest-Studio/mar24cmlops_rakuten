@@ -193,14 +193,14 @@ def main():
     # Text prediction
     print(predict_with_unified_interface(designation="import jeu video japon"))
     # Recorded image prediction
-    print(predict_with_unified_interface(imageid=234234,productid=184251,directory="data/preprocessed/image_train"))
+    print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.join.path(prefix,"data/preprocessed/image_train")))
     # Prediction with both recorded image and text
-    print(predict_with_unified_interface(imageid=234234,productid=184251,directory="data/preprocessed/image_train",designation="import jeu video japon"))
+    print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.join.path(prefix,"data/preprocessed/image_train",designation="import jeu video japon")))
     # Prediction with a chunk of bytes representing an image in memory
-    img=open('data/preprocessed/image_train/image_234234_product_184251.jpg','rb').read()
+    img=open(os.join.path(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
     print(predict_with_unified_interface(file=img))
     # Prediction with both a designation and a chunk of bytes representing an image in memory
-    img=open('data/preprocessed/image_train/image_234234_product_184251.jpg','rb').read()
+    img=open(os.path.join(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
     print(predict_with_unified_interface(file=img, designation="import jeu video japon"))
 
 if __name__=="__main__":

@@ -1,0 +1,5 @@
+*.jpg
+data/raw/image_test/*
+data/raw/image_train/*
+data/preprocessed/image_test/*
+data/preprocessed/image_train/*
