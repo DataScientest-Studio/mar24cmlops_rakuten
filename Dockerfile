@@ -1,9 +1,33 @@
 FROM python:3-slim
 
-WORKDIR /app
+# Mettre à jour les packages système et installer les dépendances nécessaires
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    build-essential \
+    expect \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Télécharger et installer Rye
+RUN curl -sSL https://rye-up.com/get -o get-rye.sh && chmod +x get-rye.sh
+
+# Script expect pour automatiser l'installation de Rye
+RUN echo '#!/usr/bin/expect -f\n\
+set timeout -1\n\
+spawn ./get-rye.sh\n\
+expect "? Continue? (y/n)" { send "y\r" }\n\
+expect "Select the preferred package installer" { send "\r" }\n\
+expect "What should running `python` or `python3` do when you are not inside a Rye managed project?" { send "\r" }\n\
+expect "Which version of Python should be used as default toolchain? (cpython@3.12)" { send "3.10.11\r" }\n\
+expect "Should the installer add Rye to PATH via .profile?" { send "y\r" }\n\
+expect eof' > install-rye.expect \
+    && chmod +x install-rye.expect
+
+# Exécuter le script expect pour installer Rye
+RUN ./install-rye.expect
+
+WORKDIR /app
 
 COPY . .
 
@@ -18,4 +42,5 @@ ENV KEY=ZDDVMAi_s9Jn03haGGSzoDVxPtd99XM2593PyNsyBbc=
 
 EXPOSE 8001
 
-CMD [ "python", "./src/api/fastapi_main.py" ]
+ENTRYPOINT ["/bin/bash", "/app/rye-env.sh"]
+CMD ["rye", "run", "python", "./src/api/fastapi_main.py" ]
