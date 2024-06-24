@@ -169,7 +169,7 @@ rsa==4.7.2
 s3transfer==0.10.1
     # via awscli
     # via boto3
-setuptools==70.0.0
+setuptools==70.1.0
     # via tensorboard
     # via tensorflow
 shellingham==1.5.4
@@ -227,5 +227,5 @@ werkzeug==3.0.3
     # via tensorboard
 wheel==0.43.0
     # via astunparse
-wrapt==1.14.1
+wrapt==1.16.0
     # via tensorflow

@@ -18,7 +18,7 @@ async def prediction(designation : str =None, imageid : int = None, productid : 
     if file is not None :
         img_context= await file.read()
     #return {'prediction' : predict_with_unified_interface(designation=designation, imageid=imageid,productid=productid,directory=directory,new_image=new_image,file=img_context)}
-    return {'prediction':'ok'}
+    return {'prediction':os.getcwd()}
 
 
 if __name__ == "__main__":
