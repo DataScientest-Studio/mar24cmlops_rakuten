@@ -5,6 +5,7 @@ from datetime import datetime
 import numpy as np
 import os
 from passlib.hash import bcrypt
+from dotenv import load_dotenv
 
 def process_listing(listing_csv_path):
     """
@@ -129,6 +130,7 @@ def init_db(duckdb_path):
     # Process listing data and user data
     listings_df = process_listing(init_listing_csv_path)
     user_df = init_user_table()
+    dim_prdtypecode = pd.read_csv(init_prdtypecode_csv_path)
     
     # Connect to DuckDB
     duckdb_conn = duckdb.connect(database=duckdb_path, read_only=False)
@@ -136,4 +138,4 @@ def init_db(duckdb_path):
     # Create and populate tables
     create_table_from_pd_into_duckdb(duckdb_conn, listings_df, 'fact_listings')
     create_table_from_pd_into_duckdb(duckdb_conn, user_df, 'dim_user')
-    create_table_from_pd_into_duckdb(duckdb_conn, user_df, 'dim_prdtypecode')
+    create_table_from_pd_into_duckdb(duckdb_conn, dim_prdtypecode, 'dim_prdtypecode')

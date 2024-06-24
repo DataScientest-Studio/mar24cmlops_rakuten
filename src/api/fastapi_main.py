@@ -30,12 +30,12 @@ def authenticate_user(username: str, password: str):
     Returns:
         bool: True if the user is authenticated, False otherwise.
     """
-    cursor = conn.execute(f"SELECT * FROM dim_user WHERE username = '{username}'")
+    cursor = conn.execute(f"SELECT hashed_password FROM dim_user WHERE username = '{username}'")
     result = cursor.fetchone()
     if not result:
         return False
     
-    hashed_password = result['hashed_password']
+    hashed_password = result[0]
     return bcrypt.verify(password, hashed_password)
 
 # Initialize FastAPI app
