@@ -13,6 +13,8 @@ dependencies = [
     "duckdb>=1.0.0",
     "cryptography>=42.0.8",
     "passlib>=1.7.4",
+    "nltk>=3.8.1",
+    "tensorflow>=2.16.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
