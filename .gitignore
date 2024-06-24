@@ -61,7 +61,10 @@ docs/_build/
 target/
 
 # DotEnv configuration
-.env
+# Ignore all content in the .env directory
+.env/*
+# Except the readme
+!.env/README.md
 
 # Database
 *.db

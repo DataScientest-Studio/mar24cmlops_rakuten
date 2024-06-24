@@ -160,7 +160,7 @@ if __name__ == "__main__":
     rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
     
     if not os.path.isfile(duckdb_path):
-        print('No Database Found')
+        print('No Database Found locally')
         # Since no database found for the API, download the initial database from S3
         download_initial_db(aws_config_path, duckdb_path)
         print('Database Sucessfully Downloaded')
