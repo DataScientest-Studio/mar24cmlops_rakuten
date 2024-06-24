@@ -4,6 +4,8 @@ from aws_utils.s3_utils import create_s3_conn_from_creds, download_from_s3, uplo
 from datetime import datetime
 import numpy as np
 import os
+from passlib.hash import bcrypt
+from dotenv import load_dotenv
 
 def process_listing(listing_csv_path):
     """
@@ -27,19 +29,26 @@ def process_listing(listing_csv_path):
 
 def init_user_table():
     """
-    Initialize the user table with default data.
+    Initialize the user table with default data including hashed passwords.
 
     Returns:
     - user_df (pd.DataFrame): DataFrame containing user data.
     """
     user_data = {
-    'username': ['jc','fred','wilfried','init_user'],
-    'first_name': ['jc','fred','wilfried','init_user'],
-    'hashed_password': ['jc','fred','wilfried','init_user'],
-    'access_rights': ['administrator','administrator','administrator','user']
+        'username': ['jc', 'fred', 'wilfried', 'init_user'],
+        'first_name': ['jc', 'fred', 'wilfried', 'init_user'],
+        'access_rights': ['administrator', 'administrator', 'administrator', 'user'],
+        'hashed_password': []
     }
+
+    # Hasher les mots de passe
+    passwords = ['jc', 'fred', 'wilfried', 'init_user']
+    hashed_passwords = [bcrypt.hash(password) for password in passwords]
+
+    user_data['hashed_password'] = hashed_passwords
+
     user_df = pd.DataFrame(user_data)
-    return(user_df)
+    return user_df
     
 def create_table_from_pd_into_duckdb(duckdb_connection,pd_df, table_name):
     """
@@ -111,14 +120,17 @@ def init_db(duckdb_path):
     data_path = os.environ['DATA_PATH']
     duckdb_path = os.path.join(data_path, os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
     init_listing_csv_path = os.path.join(data_path,'X_train.csv')
+    init_prdtypecode_csv_path = os.path.join(data_path,'dim_prdtypecode.csv')
     
     # Download initial data from S3
     s3_conn = create_s3_conn_from_creds(cfg_path)
     download_from_s3(s3_conn,'X_train.csv', init_listing_csv_path)
+    download_from_s3(s3_conn,'dim_prdtypecode.csv', init_prdtypecode_csv_path)
     
     # Process listing data and user data
     listings_df = process_listing(init_listing_csv_path)
     user_df = init_user_table()
+    dim_prdtypecode = pd.read_csv(init_prdtypecode_csv_path)
     
     # Connect to DuckDB
     duckdb_conn = duckdb.connect(database=duckdb_path, read_only=False)
@@ -126,3 +138,4 @@ def init_db(duckdb_path):
     # Create and populate tables
     create_table_from_pd_into_duckdb(duckdb_conn, listings_df, 'fact_listings')
     create_table_from_pd_into_duckdb(duckdb_conn, user_df, 'dim_user')
+    create_table_from_pd_into_duckdb(duckdb_conn, dim_prdtypecode, 'dim_prdtypecode')

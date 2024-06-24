@@ -25,6 +25,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+.aws_config_decr.ini
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -60,13 +61,22 @@ docs/_build/
 target/
 
 # DotEnv configuration
-.env
+# Ignore all content in the .env directory
+.env/*
+# Except the readme
+!.env/README.md
 
 # Database
 *.db
 *.rdb
 *.csv
 *.duckdb
+
+*.jpg
+*.zip
+*.jpg:Zone.Identifier
+*.zip:Zone.Identifier
+*.csv:Zone.Identifier
 
 # Pycharm
 .idea
