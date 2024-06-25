@@ -5,7 +5,6 @@ from datetime import datetime
 import numpy as np
 import os
 from passlib.hash import bcrypt
-from dotenv import load_dotenv
 
 def process_listing(listing_csv_path):
     """

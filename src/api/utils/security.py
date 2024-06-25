@@ -1,7 +1,6 @@
 from cryptography.fernet import Fernet
 from passlib.hash import bcrypt
 from datetime import datetime, timedelta
-from passlib.hash import bcrypt
 import jwt
 import os
 
