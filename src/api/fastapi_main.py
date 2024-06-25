@@ -4,15 +4,11 @@ from pydantic import BaseModel
 import duckdb
 import uvicorn
 import os
-from aws_utils.make_db import download_initial_db
+from utils.make_db import download_initial_db
 from dotenv import load_dotenv
 from passlib.hash import bcrypt
 import jwt
 from datetime import datetime, timedelta
-
-SECRET_KEY = "7857d2e32966c142dd14307856b540a4c9ee94fc7af45078a82762c74c33c6b5"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
@@ -21,7 +17,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, os.environ['JWT_KEY'], algorithm=os.environ['ALGORITHM'])
     return encoded_jwt
 
 # Model for listing
@@ -72,7 +68,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=int(os.environ['ACCESS_TOKEN_EXPIRE_MINUTES']))
     access_token = create_access_token(
         data={"sub": username}, expires_delta=access_token_expires
     )
@@ -86,7 +82,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, os.environ['JWT_KEY'], algorithms=[os.environ['ALGORITHM']])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
