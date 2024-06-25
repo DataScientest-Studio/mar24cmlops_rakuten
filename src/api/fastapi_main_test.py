@@ -68,6 +68,6 @@ if __name__ == "__main__":
     # Loads the mapper between the return of the models and the associated prdtypecode
     with open(os.path.join(prefix,"src/train_model_legacy/models/model_parameters/mapper.json"), "r") as json_file:
         mapper = json.load(json_file)
-    lstm=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.h5"))
-    vgg16=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.h5"))
+    lstm=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.keras"))
+    vgg16=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.keras"))
     uvicorn.run(app, host="0.0.0.0", port=8001)
