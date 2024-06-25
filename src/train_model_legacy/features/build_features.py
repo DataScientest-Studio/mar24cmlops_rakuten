@@ -1,12 +1,12 @@
 import pandas as pd
 import nltk
-from bs4 import BeautifulSoup
+#from bs4 import BeautifulSoup
 import re
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 import pickle
-import math
+#import math
 
 
 class DataImporter:
@@ -105,10 +105,10 @@ class TextPreprocessor:
 
     def preprocess_text(self, text):
 
-        if isinstance(text, float) and math.isnan(text):
-            return ""
+ #       if isinstance(text, float) and math.isnan(text):
+ #           return ""
         # Supprimer les balises HTML
-        text = BeautifulSoup(text, "html.parser").get_text()
+#        text = BeautifulSoup(text, "html.parser").get_text()
 
         # Supprimer les caractères non alphabétiques
         text = re.sub(r"[^a-zA-Z]", " ", text)

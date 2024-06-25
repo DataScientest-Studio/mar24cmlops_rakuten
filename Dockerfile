@@ -43,4 +43,4 @@ ENV KEY=ZDDVMAi_s9Jn03haGGSzoDVxPtd99XM2593PyNsyBbc=
 EXPOSE 8001
 
 ENTRYPOINT ["/bin/bash", "/app/rye-env.sh"]
-CMD /bin/bash -c "rye sync && rye run python ./src/api/fastapi_main_test.py"
+CMD /bin/bash -c "rye sync && rye run python ./src/api/fastapi_main_test1.py"

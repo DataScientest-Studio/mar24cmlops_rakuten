@@ -32,8 +32,8 @@ with open(os.path.join(prefix,"src/train_model_legacy/models/model_parameters/ma
     mapper = json.load(json_file)
 
 # Loads the trained models for the text and image predictions
-vgg16=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.h5"))
-lstm=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.h5"))
+vgg16=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.keras"))
+lstm=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.keras"))
 best_weights=None
 
 # Loads the weights for the concatenation of the results of the previous models
@@ -52,16 +52,16 @@ def change_model(pathway : str = None):  # A tester
     if pathway is not None:
         # Verifies the existence of the model and downloads it else raise an exceptio
         if os.path.isdir(f"models/staging_models/{pathway}"):
-            vgg16=keras.models.load_model(os.path.join(prefix,f"models/staging_models/{pathway}/best_vgg16_model.h5"))
-            lstm=keras.models.load_model(os.path.join(prefix,f"models/staging_models/{pathway}/best_lstm_model.h5"))
+            vgg16=keras.models.load_model(os.path.join(prefix,f"models/staging_models/{pathway}/best_vgg16_model.keras"))
+            lstm=keras.models.load_model(os.path.join(prefix,f"models/staging_models/{pathway}/best_lstm_model.keras"))
             with open(os.path.join(prefix,f"models/staging_models/{pathway}/best_weights.pkl"),"rb") as file :
                 best_weights=pickle.load(file)
         else:
             raise Exception("Bad location for a model")
     # By default, without any argument, uses the model in production
     else :
-        vgg16=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.h5"))
-        lstm=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.h5"))
+        vgg16=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.keras"))
+        lstm=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.keras"))
         with open("models/best_weights.pkl","rb") as file :
             best_weights=pickle.load(file)
 
@@ -193,11 +193,11 @@ def main():
     # Text prediction
     print(predict_with_unified_interface(designation="import jeu video japon"))
     # Recorded image prediction
-    print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.join.path(prefix,"data/preprocessed/image_train")))
+    print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.path.join(prefix,"data/preprocessed/image_train")))
     # Prediction with both recorded image and text
-    print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.join.path(prefix,"data/preprocessed/image_train",designation="import jeu video japon")))
+    print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.path.join(prefix,"data/preprocessed/image_train"),designation="import jeu video japon"))
     # Prediction with a chunk of bytes representing an image in memory
-    img=open(os.join.path(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
+    img=open(os.path.join(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
     print(predict_with_unified_interface(file=img))
     # Prediction with both a designation and a chunk of bytes representing an image in memory
     img=open(os.path.join(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()

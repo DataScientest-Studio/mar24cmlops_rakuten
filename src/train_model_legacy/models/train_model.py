@@ -64,7 +64,7 @@ class TextLSTMModel:
 
         lstm_callbacks = [
             ModelCheckpoint(
-                filepath="models/best_lstm_model.h5", save_best_only=True
+                filepath="models/best_lstm_model.keras", save_best_only=True
             ),  # Enregistre le meilleur modèle
             EarlyStopping(
                 patience=3, restore_best_weights=True
@@ -75,7 +75,7 @@ class TextLSTMModel:
         self.model.fit(
             [train_padded_sequences],
             tf.keras.utils.to_categorical(y_train, num_classes=27),
-            epochs=1,
+            epochs=10,
             batch_size=32,
             validation_data=(
                 [val_padded_sequences],
@@ -145,7 +145,7 @@ class ImageVGG16Model:
 
         vgg_callbacks = [
             ModelCheckpoint(
-                filepath="models/best_vgg16_model.h5", save_best_only=True
+                filepath="models/best_vgg16_model.keras", save_best_only=True
             ),  # Enregistre le meilleur modèle
             EarlyStopping(
                 patience=3, restore_best_weights=True
@@ -155,7 +155,7 @@ class ImageVGG16Model:
 
         self.model.fit(
             train_generator,
-            epochs=1,
+            epochs=10,
             validation_data=val_generator,
             callbacks=vgg_callbacks,
         )
@@ -195,7 +195,7 @@ class concatenate:
 
             # Ajout des échantillons sous-échantillonnés et de leurs étiquettes aux DataFrames
             new_X_train = pd.concat([new_X_train, X_train.loc[sampled_indices]])
-            new_y_train = pd.concat([new_y_train, y_train.loc[sampled_indices]])
+            new_y_train = pd.concat([new_y_train, y_train.loc[sampled_indices]])[['prdtypecode']]
 
         # Réinitialiser les index des DataFrames
         new_X_train = new_X_train.reset_index(drop=True)

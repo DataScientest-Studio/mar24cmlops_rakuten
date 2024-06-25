@@ -32,8 +32,8 @@ print("Finished training VGG")
 with open("models/tokenizer_config.json", "r", encoding="utf-8") as json_file:
     tokenizer_config = json_file.read()
 tokenizer = tf.keras.preprocessing.text.tokenizer_from_json(tokenizer_config)
-lstm = keras.models.load_model("models/best_lstm_model.h5")
-vgg16 = keras.models.load_model("models/best_vgg16_model.h5")
+lstm = keras.models.load_model("models/best_lstm_model.keras")
+vgg16 = keras.models.load_model("models/best_vgg16_model.keras")
 
 print("Training the concatenate model")
 model_concatenate = concatenate(tokenizer, lstm, vgg16)
@@ -58,4 +58,4 @@ concatenate_model = keras.models.Model(
 )
 
 # Enregistrer le modèle au format h5
-concatenate_model.save("models/concatenate.h5")
+concatenate_model.save("models/concatenate.keras")

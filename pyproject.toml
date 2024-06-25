@@ -15,6 +15,9 @@ dependencies = [
     "passlib>=1.7.4",
     "nltk>=3.8.1",
     "tensorflow>=2.16.1",
+    "scikit-learn>=1.5.0",
+    "h5>=0.9.3",
+    "pillow>=10.3.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
