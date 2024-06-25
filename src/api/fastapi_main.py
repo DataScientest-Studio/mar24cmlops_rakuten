@@ -1,3 +1,4 @@
+from datetime import timedelta
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -5,20 +6,9 @@ import duckdb
 import uvicorn
 import os
 from utils.make_db import download_initial_db
+from utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
-from passlib.hash import bcrypt
 import jwt
-from datetime import datetime, timedelta
-
-def create_access_token(data: dict, expires_delta: timedelta = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, os.environ['JWT_KEY'], algorithm=os.environ['ALGORITHM'])
-    return encoded_jwt
 
 # Model for listing
 class Listing(BaseModel):
@@ -26,11 +16,8 @@ class Listing(BaseModel):
     designation: str
     user_prdtypecode: int
     imageid: int
-
-# Define OAuth2 password bearer
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-# Password verification function
+    
+# Auth User function
 def authenticate_user(username: str, password: str):
     """
     Authenticate a user with username and password.
@@ -48,7 +35,10 @@ def authenticate_user(username: str, password: str):
         return False
     
     hashed_password = result[0]
-    return bcrypt.verify(password, hashed_password)
+    return verify_password(password, hashed_password)
+
+# Define OAuth2 password bearer
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -60,6 +50,15 @@ def get_index():
 # Endpoint to authenticate and get token
 @app.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Endpoint to authenticate user and provide access token.
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): The form data containing username and password.
+
+    Returns:
+        dict: Dictionary containing the access token and token type.
+    """
     username = form_data.username
     password = form_data.password
     if not authenticate_user(username, password):
@@ -76,6 +75,15 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 # Dependency function to get current user from token
 async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """
+    Get the current user from the token.
+
+    Args:
+        token (str): The JWT token.
+
+    Returns:
+        dict: Dictionary containing the username.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -168,12 +176,14 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
     return {"message": f"Listing {listing_id_added} added successfully"}
 
 if __name__ == "__main__":
+    # Load environment variables from .env file
     load_dotenv('.env/.env.development')
     
     aws_config_path = os.environ['AWS_CONFIG_PATH']
     duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
     rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
     
+    # Check if the DuckDB database file exists locally, if not, download it from S3
     if not os.path.isfile(duckdb_path):
         print('No Database Found locally')
         # Since no database found for the API, download the initial database from S3
