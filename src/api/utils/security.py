@@ -1,5 +1,8 @@
 from cryptography.fernet import Fernet
 from passlib.hash import bcrypt
+from datetime import datetime, timedelta
+import jwt
+import os
 
 def generate_key():
     """
@@ -51,13 +54,33 @@ def decrypt_file(key, input_file, output_file):
         
 def verify_password(plain_password, hashed_password):
     """
-    Vérifie si le mot de passe en texte clair correspond au mot de passe haché.
+    Verifies if the plain text password matches the hashed password.
 
     Args:
-    - plain_password (str): Mot de passe en texte clair à vérifier.
-    - hashed_password (str): Mot de passe haché à comparer.
+    - plain_password (str): Plain text password to verify.
+    - hashed_password (str): Hashed password to compare.
 
     Returns:
-    - bool: True si le mot de passe correspond, False sinon.
+    - bool: True if the password matches, False otherwise.
     """
     return bcrypt.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    """
+    Create a JWT access token.
+
+    Args:
+        data (dict): The data to encode in the token.
+        expires_delta (timedelta, optional): The token expiry duration. Defaults to 15 minutes if not provided.
+
+    Returns:
+        str: The encoded JWT token.
+    """
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, os.environ['JWT_KEY'], algorithm=os.environ['ALGORITHM'])
+    return encoded_jwt

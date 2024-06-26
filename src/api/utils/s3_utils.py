@@ -1,7 +1,7 @@
 import boto3
 import configparser
 import os
-from aws_utils.security import decrypt_file
+from utils.security import decrypt_file
 
 def load_aws_cfg(file_path):
     """
