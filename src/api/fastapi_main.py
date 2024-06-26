@@ -3,12 +3,28 @@ from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 import duckdb
-import uvicorn
 import os
-from utils.make_db import download_initial_db
-from utils.security import create_access_token, verify_password
+from src.api.utils.make_db import download_initial_db
+from src.api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
+
+# Load environment variables from .env file
+load_dotenv('.env/.env.development')
+
+aws_config_path = os.environ['AWS_CONFIG_PATH']
+duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
+rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
+
+# Check if the DuckDB database file exists locally, if not, download it from S3
+if not os.path.isfile(duckdb_path):
+    print('No Database Found locally')
+    # Since no database found for the API, download the initial database from S3
+    download_initial_db(aws_config_path, duckdb_path)
+    print('Database Sucessfully Downloaded')
+    
+# Load DuckDB connection   
+conn = duckdb.connect(database=duckdb_path, read_only=False)
 
 # Model for listing
 class Listing(BaseModel):
@@ -174,22 +190,3 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
     listing_id_added = conn.execute(sql).fetchall()[0][0]
 
     return {"message": f"Listing {listing_id_added} added successfully"}
-
-if __name__ == "__main__":
-    # Load environment variables from .env file
-    load_dotenv('.env/.env.development')
-    
-    aws_config_path = os.environ['AWS_CONFIG_PATH']
-    duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
-    rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
-    
-    # Check if the DuckDB database file exists locally, if not, download it from S3
-    if not os.path.isfile(duckdb_path):
-        print('No Database Found locally')
-        # Since no database found for the API, download the initial database from S3
-        download_initial_db(aws_config_path, duckdb_path)
-        print('Database Sucessfully Downloaded')
-        
-    # Load DuckDB connection   
-    conn = duckdb.connect(database=duckdb_path, read_only=False)
-    uvicorn.run(app, host="0.0.0.0", port=8001)
