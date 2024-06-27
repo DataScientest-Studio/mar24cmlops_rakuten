@@ -28,7 +28,7 @@ prd_categories=dict()
 
 # Load environment variables from .env file
 load_dotenv('.env/.env.development')
-    
+        
 aws_config_path = os.environ['AWS_CONFIG_PATH']
 duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
 rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
@@ -48,7 +48,7 @@ stop_words = set(stopwords.words("french"))
 
 # Modification of the pathways following the environnment
 prefix=None
-if os.getenv('CONTAINER') is not True:
+if not os.getenv('CONTAINER'):
     prefix='.'
 else :
     prefix='/app'
@@ -122,22 +122,29 @@ def text_predict(text):
     final_prediction = np.argmax(lstm_proba)   
     return [mapper[str(final_prediction)],lstm_proba] 
 
-def image_predict(imageid : int = None, productid : int = None, directory : str = 'data/preprocessed/image_train', new_image : str = None):
+def image_predict(s3_client = None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None):
     """
     Image prediction following 2 ways :
         _with the directory where the image named following imageid and productid is stored
         _with a complete new pathway, name included
     Returns : [prdtypecode,sequence of probabilities]
     """
+    img=None
     imagepath=None
     # if imageid and productid specified
-    if imageid is not None and productid is not None :
-        imagepath=os.path.join(prefix,os.path.join(directory,f"image_{imageid}_product_{productid}.jpg"))
+    if imageid is not None and productid is not None and s3_client is not None :
+        imagepath=os.path.join(directory,f"image_{imageid}_product_{productid}.jpg")
+        print(imagepath)
+        s3_file=BytesIO()
+        s3_client.download_fileobj("rakutenprojectbucket",imagepath,s3_file)
+        s3_file.seek(0)
+        img=load_img(s3_file,target_size=(224,224,3))
     # if specified, new_image has the priority over imageid, productid and directory
     if new_image is not None:
         imagepath=new_image
+        img=load_img(imagepath,target_size=(224,224,3))
     # Loading of the image and preprocessing following vgg16
-    img=load_img(imagepath,target_size=(224,224,3))
+    
     img_array = img_to_array(img)        
     img_array = preprocess_input(img_array)
     images = tf.convert_to_tensor([img_array], dtype=tf.float32)
@@ -162,7 +169,7 @@ def image_object_predict(img):
     final_prediction = np.argmax(vgg16_proba)
     return [mapper[str(final_prediction)],vgg16_proba]
 
-def predict_with_unified_interface(designation : str =None, imageid : int = None, productid : int = None, directory : str = 'data/preprocessed/image_train', new_image : str = None, file = None):
+def predict_with_unified_interface(s3_client = None, designation : str =None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None, file = None):
     """
     Function that takes all the possible entries and returns a prdtypecode
     Its aim is to unify all the possible entries configurations into one unique function to simplify the use
@@ -185,10 +192,10 @@ def predict_with_unified_interface(designation : str =None, imageid : int = None
     if designation is not None :
         lstm_return=text_predict(designation)
     # image prediction if (imageid and productid) or new_image provided
-    if imageid is not None and productid is not None:
-        if os.path.isfile(os.path.join(prefix,os.path.join(directory,f"image_{imageid}_product_{productid}.jpg"))) is False:
-            raise Exception("Mauvaises références pour retrouver l\'image")
-        vgg16_return=image_predict(imageid=imageid,productid=productid,directory=directory)
+    if imageid is not None and productid is not None and s3_client is not None:
+        #if os.path.isfile(os.path.join(prefix,os.path.join(directory,f"image_{imageid}_product_{productid}.jpg"))) is False:
+        #    raise Exception("Mauvaises références pour retrouver l\'image")
+        vgg16_return=image_predict(s3_client=s3_client, imageid=imageid,productid=productid,directory=directory)
     elif new_image is not None:
         vgg16_return=image_predict(new_image=new_image)
     # image prediction if image object (file) provided
@@ -220,14 +227,14 @@ def main():
     """
 
     
-    s3_client = create_s3_conn_from_creds(os.getenv('AWS_CONFIG_PATH'))
-#    data=BytesIO()
-#    s3_client.download_fileobj("rakutenprojectbucket","image_train/image_1007738129_product_435130019.jpg",data)
-    with open('temp.jpg','wb') as f:    
-        s3_client.download_fileobj("rakutenprojectbucket","image_train/image_1007738129_product_435130019.jpg",f)
-    #img=load_img('temp.jpg')
-#    data.seek(0)
-#    img=load_img(data.read())
+    client = create_s3_conn_from_creds(os.getenv('AWS_CONFIG_PATH'))
+    data=BytesIO()
+    client.download_fileobj("rakutenprojectbucket","image_train/image_1007738129_product_435130019.jpg",data)
+#    with open('temp.jpg','wb') as f:    
+#        client.download_fileobj("rakutenprojectbucket","image_train/image_1007738129_product_435130019.jpg",f)
+#    img=load_img('temp.jpg')
+    data.seek(0)
+    img=load_img(data)
 #    print(type(img))
 #    print(len(img))
     #img=img.tobytes()
@@ -252,6 +259,7 @@ def main():
     #print(predict_with_unified_interface(file=img, designation="reine roumanie paris"))
     print(predict_with_unified_interface(new_image='temp.jpg', designation="reine roumanie paris"))
     print(predict_with_unified_interface(new_image='temp.jpg'))
+    print(predict_with_unified_interface(s3_client=client, imageid=1007738129,productid=435130019))
     
 if __name__=="__main__":
     main()
