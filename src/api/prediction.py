@@ -7,12 +7,24 @@ import pickle
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.applications.vgg16 import preprocess_input
-from tensorflow.keras.preprocessing.image import img_to_array, load_img
+from tensorflow.keras.preprocessing.image import img_to_array, load_img, save_img
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import numpy as np
 import json
 import os
 from io import BytesIO
+from dotenv import load_dotenv
+import duckdb
+from utils.make_db import download_initial_db
+from utils.security import create_access_token, verify_password
+from utils.s3_utils import create_s3_conn_from_creds, download_from_s3
+import boto3 
+import pandas as pd 
+
+
+s3_client=None
+db_conn=None
+prd_categories=dict()
 
 # Loads every context to allow text_analysis
 nltk.download("punkt")
@@ -172,15 +184,18 @@ def predict_with_unified_interface(designation : str =None, imageid : int = None
         vgg16_return=image_object_predict(img)
     # Return prdtypecode prediction if only designation provided
     if lstm_return is not None and vgg16_return is None:
-        return lstm_return[0]
+        return prd_categories[int(lstm_return[0])]
+    #    return lstm_return[0]
     # Returns prdtypecode prediction if only image provided 
     if vgg16_return is not None and lstm_return is None:
-        return vgg16_return[0]
+        return prd_categories[int(vgg16_return[0])]
+    #    return vgg16_return[0]
     # Prediction if both image and designation provided
     if lstm_return is not None and vgg16 is not None:
         concatenate_proba = (best_weights[0] * lstm_return[1] + best_weights[1] * vgg16_return[1])
         final_prediction = np.argmax(concatenate_proba)
-        return mapper[str(final_prediction)]
+        return prd_categories[int(mapper[str(final_prediction)])]
+    #    return mapper[str(final_prediction)]
     # Raise an exception if no prediction is possible
     raise Exception("La prédiction n\'a pas pu aboutir.")
 
@@ -190,18 +205,51 @@ def main():
     The aim is to test the efficiency of this module by various examples
     representing the various possibilities of arguments
     """
+    # Load environment variables from .env file
+    load_dotenv('.env/.env.development')
+    
+    aws_config_path = os.environ['AWS_CONFIG_PATH']
+    duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
+    rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
+    
+    db_conn = duckdb.connect(database=duckdb_path, read_only=False)
+    
+    categories=db_conn.sql('SELECT * FROM dim_prdtypecode').fetchall()    
+    for i in categories:
+        prd_categories[i[1]]=i[2]
+    
+    s3_client = create_s3_conn_from_creds(os.getenv('AWS_CONFIG_PATH'))
+#    data=BytesIO()
+#    s3_client.download_fileobj("rakutenprojectbucket","image_train/image_1007738129_product_435130019.jpg",data)
+    with open('temp.jpg','wb') as f:    
+        s3_client.download_fileobj("rakutenprojectbucket","image_train/image_1007738129_product_435130019.jpg",f)
+    #img=load_img('temp.jpg')
+#    data.seek(0)
+#    img=load_img(data.read())
+#    print(type(img))
+#    print(len(img))
+    #img=img.tobytes()
+    #img=data
+    #save_img('coucou3.jpg',img_to_array(img,dtype=int))
+#    download_from_s3(s3_conn=s3_client, 
+#                 bucket_path ='image_train/image_1007738129_product_435130019.jpg',
+#                 local_path =os.path.join(os.getcwd(),'coucou1.jpg'))
+
     # Text prediction
     print(predict_with_unified_interface(designation="import jeu video japon"))
+    print(predict_with_unified_interface(designation="reine roumanie paris"))
     # Recorded image prediction
-    print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.path.join(prefix,"data/preprocessed/image_train")))
+    #print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.path.join(prefix,"data/preprocessed/image_train")))
     # Prediction with both recorded image and text
-    print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.path.join(prefix,"data/preprocessed/image_train"),designation="import jeu video japon"))
+    #print(predict_with_unified_interface(imageid=234234,productid=184251,directory=os.path.join(prefix,"data/preprocessed/image_train"),designation="import jeu video japon"))
     # Prediction with a chunk of bytes representing an image in memory
-    img=open(os.path.join(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
-    print(predict_with_unified_interface(file=img))
+    #img=open(os.path.join(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
+    #print(predict_with_unified_interface(file=img))
     # Prediction with both a designation and a chunk of bytes representing an image in memory
-    img=open(os.path.join(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
-    print(predict_with_unified_interface(file=img, designation="import jeu video japon"))
-
+    #img=open(os.path.join(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
+    #print(predict_with_unified_interface(file=img, designation="reine roumanie paris"))
+    print(predict_with_unified_interface(new_image='temp.jpg', designation="reine roumanie paris"))
+    print(predict_with_unified_interface(new_image='temp.jpg'))
+    
 if __name__=="__main__":
     main()
