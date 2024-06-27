@@ -26,6 +26,19 @@ s3_client=None
 db_conn=None
 prd_categories=dict()
 
+# Load environment variables from .env file
+load_dotenv('.env/.env.development')
+    
+aws_config_path = os.environ['AWS_CONFIG_PATH']
+duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
+rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
+
+# Download database for the mapping of the results    
+db_conn = duckdb.connect(database=duckdb_path, read_only=False)
+categories=db_conn.sql('SELECT * FROM dim_prdtypecode').fetchall()    
+for i in categories:
+    prd_categories[i[1]]=i[2]
+
 # Loads every context to allow text_analysis
 nltk.download("punkt")
 nltk.download("stopwords")
@@ -35,7 +48,7 @@ stop_words = set(stopwords.words("french"))
 
 # Modification of the pathways following the environnment
 prefix=None
-if os.getenv('DATA_PATH') is None:
+if os.getenv('CONTAINER') is not True:
     prefix='.'
 else :
     prefix='/app'
@@ -205,18 +218,7 @@ def main():
     The aim is to test the efficiency of this module by various examples
     representing the various possibilities of arguments
     """
-    # Load environment variables from .env file
-    load_dotenv('.env/.env.development')
-    
-    aws_config_path = os.environ['AWS_CONFIG_PATH']
-    duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
-    rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
-    
-    db_conn = duckdb.connect(database=duckdb_path, read_only=False)
-    
-    categories=db_conn.sql('SELECT * FROM dim_prdtypecode').fetchall()    
-    for i in categories:
-        prd_categories[i[1]]=i[2]
+
     
     s3_client = create_s3_conn_from_creds(os.getenv('AWS_CONFIG_PATH'))
 #    data=BytesIO()
