@@ -2,6 +2,7 @@ import boto3
 import configparser
 import os
 from src.api.utils.security import decrypt_file
+from concurrent.futures import ThreadPoolExecutor
 
 def load_aws_cfg(file_path):
     """
@@ -103,7 +104,17 @@ def upload_to_s3(s3_conn, local_path, bucket_path):
     """
     # Upload the file to S3
     s3_conn.upload_file(local_path, "rakutenprojectbucket", bucket_path)
-    
+
+def upload_file_list_to_s3(s3_conn, local_path_x_bucket_path_tuple):
+    """
+    Upload a list of files to an S3 bucket in parallel.
+
+    Args:
+        s3_conn (boto3.Client): The S3 client.
+        local_path_x_bucket_path_tuple (list of tuple): A list of tuples where each tuple contains the local path and the bucket path.
+    """
+    with ThreadPoolExecutor() as executor:
+        executor.map(lambda local_x_bucket: upload_to_s3(s3_conn, local_x_bucket[0], local_x_bucket[1]), local_path_x_bucket_path_tuple)
 
 # if __name__ == "__main__":
     
@@ -121,3 +132,22 @@ def upload_to_s3(s3_conn, local_path, bucket_path):
 #         local_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/imgtest.jpg',
 #         bucket_path = 'imgtest.jpg'
 #     )
+
+# from src.api.utils.s3_utils import upload_file_list_to_s3, create_s3_conn_from_creds
+# import os
+# from dotenv import load_dotenv
+
+# images = os.listdir('data/images/image_test')
+# to_upload_images = images
+
+# images_path = [os.path.join('data/images/image_test',image) for image in to_upload_images]
+# bucket_path = [os.path.join('image_test_2/',image) for image in to_upload_images]
+
+# local_x_bucket = list(zip(images_path,bucket_path))
+
+# # Load environment variables from .env file
+# load_dotenv('.env/.env.development')
+# aws_config_path = os.environ['AWS_CONFIG_PATH']
+
+# s3_conn = create_s3_conn_from_creds(aws_config_path)
+# upload_file_list_to_s3(s3_conn, local_x_bucket)

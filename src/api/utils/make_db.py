@@ -138,3 +138,6 @@ def init_db(duckdb_path):
     create_table_from_pd_into_duckdb(duckdb_conn, listings_df, 'fact_listings')
     create_table_from_pd_into_duckdb(duckdb_conn, user_df, 'dim_user')
     create_table_from_pd_into_duckdb(duckdb_conn, dim_prdtypecode, 'dim_prdtypecode')
+    
+def hi():
+    print('hi')
