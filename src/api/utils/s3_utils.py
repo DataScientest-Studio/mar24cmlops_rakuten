@@ -4,7 +4,6 @@ import os
 from api.utils.security import decrypt_file
 from concurrent.futures import ThreadPoolExecutor
 from api.utils.resolve_path import resolve_path
-from dotenv import load_dotenv
 
 def load_aws_cfg(file_path):
     """
@@ -17,7 +16,7 @@ def load_aws_cfg(file_path):
         dict: A dictionary containing 'aws_access_key_id', 'aws_secret_access_key', 'role_arn', and 'role_session_name'.
     """
     decr_file = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']),".aws_config_decr.ini")
-    decrypt_file(os.environ['KEY'], file_path, decr_file)
+    decrypt_file(os.environ['KEY'], resolve_path(file_path), decr_file)
     
     config = configparser.ConfigParser()
     config.read(decr_file)
