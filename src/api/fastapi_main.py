@@ -8,17 +8,21 @@ from api.utils.make_db import download_initial_db
 from api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
+from api.utils.resolve_path import resolve_path
 
 # Load environment variables from .env file
-load_dotenv('../.env/.env.development')
+env_path = resolve_path('.env/.env.development')
+load_dotenv(env_path)
 
-aws_config_path = os.environ['AWS_CONFIG_PATH']
-duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
-rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
+# Convert paths to absolute paths
+aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
+duckdb_path = os.path.join(resolve_path(os.environ['DATA_PATH']), os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
+encrypted_file_path = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']), '.encrypted')
 
 # Check if the DuckDB database file exists locally, if not, download it from S3
 if not os.path.isfile(duckdb_path):
     print('No Database Found locally')
+    
     # Since no database found for the API, download the initial database from S3
     download_initial_db(aws_config_path, duckdb_path)
     print('Database Sucessfully Downloaded')
