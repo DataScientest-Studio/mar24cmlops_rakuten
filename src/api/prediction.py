@@ -48,7 +48,7 @@ stop_words = set(stopwords.words("french"))
 
 # Modification of the pathways following the environnment
 prefix=None
-if not os.getenv('CONTAINER'):
+if not os.getenv('IS_CONTAINER'):
     prefix='.'
 else :
     prefix='/app'
@@ -190,32 +190,34 @@ def predict_with_unified_interface(s3_client = None, designation : str =None, im
     img=None
     # text prediction if designation specified
     if designation is not None :
+        #print('A')  #####################################################
         lstm_return=text_predict(designation)
     # image prediction if (imageid and productid) or new_image provided
     if imageid is not None and productid is not None and s3_client is not None:
-        #if os.path.isfile(os.path.join(prefix,os.path.join(directory,f"image_{imageid}_product_{productid}.jpg"))) is False:
-        #    raise Exception("Mauvaises références pour retrouver l\'image")
+        #print('B') ##########################################################
         vgg16_return=image_predict(s3_client=s3_client, imageid=imageid,productid=productid,directory=directory)
     elif new_image is not None:
+        #print('C') ####################################################
         vgg16_return=image_predict(new_image=new_image)
     # image prediction if image object (file) provided
     if file is not None:
+        #print('File')   #######################################################
         img=load_img(BytesIO(file),target_size=(224,224,3))
         vgg16_return=image_object_predict(img)
     # Return prdtypecode prediction if only designation provided
     if lstm_return is not None and vgg16_return is None:
+        #print('RA') #############################################""
         return prd_categories[int(lstm_return[0])]
-    #    return lstm_return[0]
     # Returns prdtypecode prediction if only image provided 
     if vgg16_return is not None and lstm_return is None:
+        #print('RB') #################################################
         return prd_categories[int(vgg16_return[0])]
-    #    return vgg16_return[0]
     # Prediction if both image and designation provided
     if lstm_return is not None and vgg16 is not None:
+        #print('RFile') #############################################""
         concatenate_proba = (best_weights[0] * lstm_return[1] + best_weights[1] * vgg16_return[1])
         final_prediction = np.argmax(concatenate_proba)
         return prd_categories[int(mapper[str(final_prediction)])]
-    #    return mapper[str(final_prediction)]
     # Raise an exception if no prediction is possible
     raise Exception("La prédiction n\'a pas pu aboutir.")
 

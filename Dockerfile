@@ -42,8 +42,8 @@ ENV KEY=ZDDVMAi_s9Jn03haGGSzoDVxPtd99XM2593PyNsyBbc=
 ENV JWT_KEY=0e3e3c66376ed252999eaf1abe176789552e7d69ac20d25824989fa6dd362093
 ENV ACCESS_TOKEN_EXPIRE_MINUTES=30
 ENV ALGORITHM=HS256
-ENV CONTAINER=True
+ENV IS_CONTAINER=True
 EXPOSE 8001
 
 ENTRYPOINT ["/bin/bash", "/app/rye-env.sh"]
-CMD /bin/bash -c "rye sync && rye run python ./src/api/fastapi_main.py"
+CMD /bin/bash -c "rye sync && rye run python ./src/api/fastapi_main_test1.py"

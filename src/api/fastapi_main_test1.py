@@ -33,7 +33,9 @@ def get_index():
     return {'data': 'hello world '+os.getcwd()}
 
 @app.post('/predict')
-async def prediction(designation : str =None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None, file : UploadFile | None = None):
+#async def prediction(designation : str =None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None, file : UploadFile | None = None):
+async def prediction(designation : str =None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None, file : UploadFile = File(None)):
+
     img_context=None
     if file is not None :
         img_context= await file.read()
