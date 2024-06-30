@@ -141,8 +141,6 @@ def upload_folder_to_s3(cfg_path, local_folder, s3_folder):
             relative_path = os.path.relpath(local_file_path, local_folder)
             s3_file_path = os.path.join(s3_folder, relative_path).replace("\\", "/")
             files_to_upload.append((local_file_path, s3_file_path))
-
-    print(files_to_upload)
     
     # Upload files to S3
     with ThreadPoolExecutor() as executor:
