@@ -4,13 +4,13 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 import duckdb
 import os
-from src.api.utils.make_db import download_initial_db
-from src.api.utils.security import create_access_token, verify_password
+from api.utils.make_db import download_initial_db
+from api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
 
 # Load environment variables from .env file
-load_dotenv('.env/.env.development')
+load_dotenv('../.env/.env.development')
 
 aws_config_path = os.environ['AWS_CONFIG_PATH']
 duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))

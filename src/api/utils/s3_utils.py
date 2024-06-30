@@ -1,7 +1,7 @@
 import boto3
 import configparser
 import os
-from src.api.utils.security import decrypt_file
+from api.utils.security import decrypt_file
 from concurrent.futures import ThreadPoolExecutor
 
 def load_aws_cfg(file_path):
