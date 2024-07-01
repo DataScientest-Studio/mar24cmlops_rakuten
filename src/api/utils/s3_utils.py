@@ -1,7 +1,11 @@
 import boto3
 import configparser
 import os
-from utils.security import decrypt_file
+from api.utils.security import decrypt_file
+from concurrent.futures import ThreadPoolExecutor
+from api.utils.resolve_path import resolve_path
+from dotenv import load_dotenv
+
 
 def load_aws_cfg(file_path):
     """
@@ -13,7 +17,7 @@ def load_aws_cfg(file_path):
     Returns:
         dict: A dictionary containing 'aws_access_key_id', 'aws_secret_access_key', 'role_arn', and 'role_session_name'.
     """
-    decr_file = os.path.join(os.environ['AWS_CONFIG_FOLDER'],".aws_config_decr.ini")
+    decr_file = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']),".aws_config_decr.ini")
     decrypt_file(os.environ['KEY'], file_path, decr_file)
     
     config = configparser.ConfigParser()
@@ -103,7 +107,46 @@ def upload_to_s3(s3_conn, local_path, bucket_path):
     """
     # Upload the file to S3
     s3_conn.upload_file(local_path, "rakutenprojectbucket", bucket_path)
+
+def upload_file_list_to_s3(s3_conn, local_path_x_bucket_path_tuple):
+    """
+    Upload a list of files to an S3 bucket in parallel.
+
+    Args:
+        s3_conn (boto3.Client): The S3 client.
+        local_path_x_bucket_path_tuple (list of tuple): A list of tuples where each tuple contains the local path and the bucket path.
+    """
+    with ThreadPoolExecutor() as executor:
+        executor.map(lambda local_x_bucket: upload_to_s3(s3_conn, local_x_bucket[0], local_x_bucket[1]), local_path_x_bucket_path_tuple)
+
+def upload_folder_to_s3(cfg_path, local_folder, s3_folder):
+    """
+    Upload a folder to the S3 bucket with a datetime-based folder name.
+
+    Args:
+        cfg_path (str): The path to the AWS configuration file.
+        local_folder (str): The local folder to be uploaded.
+
+    Returns:
+        str: The name of the folder in S3 where the files were uploaded.
+    """
+    # Create S3 connection
+    s3_conn = create_s3_conn_from_creds(cfg_path)
+
+    # Get list of all files in the local folder
+    files_to_upload = []
+    for root, _, files in os.walk(local_folder):
+        for file in files:
+            local_file_path = os.path.join(root, file)
+            relative_path = os.path.relpath(local_file_path, local_folder)
+            s3_file_path = os.path.join(s3_folder, relative_path).replace("\\", "/")
+            files_to_upload.append((local_file_path, s3_file_path))
     
+    # Upload files to S3
+    with ThreadPoolExecutor() as executor:
+        executor.map(lambda local_x_bucket: upload_to_s3(s3_conn, local_x_bucket[0], local_x_bucket[1]), files_to_upload)
+
+    return None
 
 # if __name__ == "__main__":
     
@@ -121,3 +164,29 @@ def upload_to_s3(s3_conn, local_path, bucket_path):
 #         local_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/imgtest.jpg',
 #         bucket_path = 'imgtest.jpg'
 #     )
+
+# from src.api.utils.s3_utils import upload_file_list_to_s3, create_s3_conn_from_creds
+# import os
+# from dotenv import load_dotenv
+
+# images = os.listdir('data/images/image_test')
+# to_upload_images = images
+
+# images_path = [os.path.join('data/images/image_test',image) for image in to_upload_images]
+# bucket_path = [os.path.join('image_test_2/',image) for image in to_upload_images]
+
+# local_x_bucket = list(zip(images_path,bucket_path))
+
+# # Load environment variables from .env file
+# load_dotenv('.env/.env.development')
+# aws_config_path = os.environ['AWS_CONFIG_PATH']
+
+# s3_conn = create_s3_conn_from_creds(aws_config_path)
+# upload_file_list_to_s3(s3_conn, local_x_bucket)
+
+# env_path = resolve_path('.env/.env.development')
+# load_dotenv(env_path)
+# aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
+
+
+# upload_folder_to_s3(aws_config_path, resolve_path('models/production_model/'),'model_repository/test_folder_model/')

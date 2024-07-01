@@ -45,4 +45,6 @@ ENV ALGORITHM=HS256
 EXPOSE 8001
 
 ENTRYPOINT ["/bin/bash", "/app/rye-env.sh"]
-CMD /bin/bash -c "rye sync && rye run python ./src/api/fastapi_main.py"
+CMD /bin/bash -c "rye sync && cd src && rye run uvicorn api.fastapi_main:app --host 0.0.0.0 --port 8001"
+
+# rye run uvicorn src.api.fastapi_main:app --host 0.0.0.0 --port 8080
