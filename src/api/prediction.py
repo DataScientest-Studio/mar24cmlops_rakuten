@@ -53,7 +53,7 @@ if not os.getenv('IS_CONTAINER'):
 else :
     prefix='/app'
 # Loads the mapper between the return of the models and the associated prdtypecode
-with open(os.path.join(prefix,"src/train_model_legacy/models/model_parameters/mapper.json"), "r") as json_file:
+with open(os.path.join(prefix,"models/mapper.json"), "r") as json_file:
     mapper = json.load(json_file)
 
 # Loads the trained models for the text and image predictions
@@ -100,7 +100,7 @@ def text_predict(text):
         [prdtypecode,sequence of probabilities]
      """
     if text is not None:
-        with open(os.path.join(prefix,"src/train_model_legacy/models/model_parameters/tokenizer_config.json"), "r", encoding="utf-8") as json_file:
+        with open(os.path.join(prefix,"models/tokenizer_config.json"), "r", encoding="utf-8") as json_file:
             tokenizer_config = json_file.read()
         tokenizer = keras.preprocessing.text.tokenizer_from_json(tokenizer_config)
         # Removes all the non-alphabetic characters
@@ -268,7 +268,7 @@ def predict_with_unified_interface(s3_client = None, designation : str =None, im
     if response is not None:
         return prd_categories[response]
     else:
-        raise HttpException('Prediction failed')
+        raise Exception('Prediction failed')
 
 
 def main():

@@ -1,12 +1,12 @@
 import duckdb
 import pandas as pd
-from api.utils.s3_utils import create_s3_conn_from_creds, download_from_s3, upload_to_s3
+from utils.s3_utils import create_s3_conn_from_creds, download_from_s3, upload_to_s3
 from datetime import datetime
 import numpy as np
 import os
 from passlib.hash import bcrypt
 from dotenv import load_dotenv
-from api.utils.resolve_path import resolve_path
+from utils.resolve_path import resolve_path
 
 def process_listing(listing_csv_path, prdtypecode_csv_path):
     """

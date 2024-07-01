@@ -1,9 +1,9 @@
 import boto3
 import configparser
 import os
-from api.utils.security import decrypt_file
+from utils.security import decrypt_file
 from concurrent.futures import ThreadPoolExecutor
-from api.utils.resolve_path import resolve_path
+from utils.resolve_path import resolve_path
 from dotenv import load_dotenv
 
 
