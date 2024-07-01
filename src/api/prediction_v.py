@@ -99,31 +99,28 @@ def text_predict(text):
     Returns:
         [prdtypecode,sequence of probabilities]
      """
-    if text is not None:
-        with open(os.path.join(prefix,"src/train_model_legacy/models/model_parameters/tokenizer_config.json"), "r", encoding="utf-8") as json_file:
-            tokenizer_config = json_file.read()
-        tokenizer = keras.preprocessing.text.tokenizer_from_json(tokenizer_config)
-        # Removes all the non-alphabetic characters
-        text = re.sub(r"[^a-zA-Z]", " ", text)
-        # Tokenization
-        words = word_tokenize(text.lower())
-        # Removes the stop wordds and lemmatization
-        filtered_words = [
-            lemmatizer.lemmatize(word)
-            for word in words
-            if word not in stop_words
-            ]
-        # The tenth most frequent words as a string
-        textes = " ".join(filtered_words[:10])
-        # Tokenization and formatting of the tokens
-        sequences=tokenizer.texts_to_sequences([textes])
-        padded_sequences = pad_sequences(sequences, maxlen=10, padding="post", truncating="post")
-        # Prediction
-        lstm_proba=lstm.predict([padded_sequences])
-        final_prediction = np.argmax(lstm_proba)   
-        return [int(mapper[str(final_prediction)]),lstm_proba]
-    # Returns None if no text provided
-    return None
+    with open(os.path.join(prefix,"src/train_model_legacy/models/model_parameters/tokenizer_config.json"), "r", encoding="utf-8") as json_file:
+        tokenizer_config = json_file.read()
+    tokenizer = keras.preprocessing.text.tokenizer_from_json(tokenizer_config)
+    # Removes all the non-alphabetic characters
+    text = re.sub(r"[^a-zA-Z]", " ", text)
+    # Tokenization
+    words = word_tokenize(text.lower())
+    # Removes the stop wordds and lemmatization
+    filtered_words = [
+        lemmatizer.lemmatize(word)
+        for word in words
+        if word not in stop_words
+        ]
+    # The tenth most frequent words as a string
+    textes = " ".join(filtered_words[:10])
+    # Tokenization and formatting of the tokens
+    sequences=tokenizer.texts_to_sequences([textes])
+    padded_sequences = pad_sequences(sequences, maxlen=10, padding="post", truncating="post")
+    # Prediction
+    lstm_proba=lstm.predict([padded_sequences])
+    final_prediction = np.argmax(lstm_proba)   
+    return [mapper[str(final_prediction)],lstm_proba] 
 
 def image_predict(s3_client = None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None):
     """
@@ -155,7 +152,7 @@ def image_predict(s3_client = None, imageid : int = None, productid : int = None
     vgg16_proba = vgg16.predict([images]) 
     final_prediction = np.argmax(vgg16_proba)
     # Returns the prdtypecode and the probabilities for the 27 categories
-    return [int(mapper[str(final_prediction)]),vgg16_proba]
+    return [mapper[str(final_prediction)],vgg16_proba]
 
 def image_object_predict(img):
     """
@@ -170,74 +167,8 @@ def image_object_predict(img):
     images = tf.convert_to_tensor([img_array], dtype=tf.float32)
     vgg16_proba = vgg16.predict([images]) 
     final_prediction = np.argmax(vgg16_proba)
-    return [int(mapper[str(final_prediction)]),vgg16_proba]
+    return [mapper[str(final_prediction)],vgg16_proba]
 
-def repartition_prediction(s3_client = None, designation : str =None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None, file = None):
-    lstm_return=None
-    vgg16_return=None
-    img=None
-    # text prediction if designation specified
-    if designation is not None :
-        lstm_return=text_predict(designation)
-    # image prediction if (imageid and productid) or new_image provided
-    if imageid is not None and productid is not None and s3_client is not None:
-        vgg16_return=image_predict(s3_client=s3_client, imageid=imageid,productid=productid,directory=directory)
-    elif new_image is not None:
-        vgg16_return=image_predict(new_image=new_image)
-    # image prediction if image object (file) provided
-    if file is not None:
-        img=load_img(BytesIO(file),target_size=(224,224,3))
-        vgg16_return=image_object_predict(img)
-    # Return prdtypecode prediction if only designation provided
-    if lstm_return is not None and vgg16_return is None:
-        return int(lstm_return[0])
-    # Returns prdtypecode prediction if only image provided 
-    if vgg16_return is not None and lstm_return is None:
-        return int(vgg16_return[0])
-    # Prediction if both image and designation provided
-    if lstm_return is not None and vgg16 is not None:
-        concatenate_proba = (best_weights[0] * lstm_return[1] + best_weights[1] * vgg16_return[1])
-        final_prediction = np.argmax(concatenate_proba)
-        return int(mapper[str(final_prediction)]) 
-    raise Exception("La prédiction n\'a pas pu aboutir.")
-
-def concatenate_predict(lstm_r,vgg16_r):
-    concatenate_proba = (best_weights[0] * lstm_r + best_weights[1] * vgg16_r)
-    final_prediction = np.argmax(concatenate_proba)
-    return int(mapper[str(final_prediction)]) 
-
-def image_management(s3_client = None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None, file = None):
-    """
-    Manage the image part of the request with the priority : 
-    image object >> new_image >> (imageid,productid)
-
-    Args:
-        s3_client (_type_, optional): _description_. Defaults to None.
-        imageid (int, optional): _description_. Defaults to None.
-        productid (int, optional): _description_. Defaults to None.
-        directory (str, optional): _description_. Defaults to 'image_train'.
-        new_image (str, optional): _description_. Defaults to None.
-        file (_type_, optional): _description_. Defaults to None.
-    Returns:
-        the prdtypecode
-    """
-    # image prediction if image object (file) provided
-    if file is not None:
-        img=load_img(BytesIO(file),target_size=(224,224,3))
-        vgg16_return=image_object_predict(img)
-        return vgg16_return
-    # image prediction if new_image (pathway+filename) provided
-    if new_image is not None:
-        vgg16_return=image_predict(new_image=new_image)
-        return vgg16_return
-    # image prediction if imageid and productid and directory provided
-    if imageid is not None and productid is not None and s3_client is not None:
-        vgg16_return=image_predict(s3_client=s3_client, imageid=imageid,productid=productid,directory=directory)
-        return vgg16_return
-    # Returns None if no image found
-    return None
-    
-    
 def predict_with_unified_interface(s3_client = None, designation : str =None, imageid : int = None, productid : int = None, directory : str = 'image_train', new_image : str = None, file = None):
     """
     Function that takes all the possible entries and returns a prdtypecode
@@ -254,21 +185,41 @@ def predict_with_unified_interface(s3_client = None, designation : str =None, im
         the prdtypecode if success
         an exception if failed
     """
-    response=None
-    lstm_return=text_predict(designation)
-    vgg16_return=image_management(s3_client=s3_client, imageid=imageid, productid=productid, directory=directory, new_image=new_image, file=file)
+    lstm_return=None
+    vgg16_return=None
+    img=None
+    # text prediction if designation specified
+    if designation is not None :
+        #print('A')  #####################################################
+        lstm_return=text_predict(designation)
+    # image prediction if (imageid and productid) or new_image provided
+    if imageid is not None and productid is not None and s3_client is not None:
+        #print('B') ##########################################################
+        vgg16_return=image_predict(s3_client=s3_client, imageid=imageid,productid=productid,directory=directory)
+    elif new_image is not None:
+        #print('C') ####################################################
+        vgg16_return=image_predict(new_image=new_image)
+    # image prediction if image object (file) provided
+    if file is not None:
+        #print('File')   #######################################################
+        img=load_img(BytesIO(file),target_size=(224,224,3))
+        vgg16_return=image_object_predict(img)
+    # Return prdtypecode prediction if only designation provided
     if lstm_return is not None and vgg16_return is None:
-        response=lstm_return[0]
-    if lstm_return is None and vgg16_return is not None:
-        response=vgg16_return[0]
-    if lstm_return is not None and vgg16_return is not None:
-        response=concatenate_predict(lstm_r=lstm_return[1],vgg16_r=vgg16_return[1])
-    print(response)
-    print(type(response))
-    if response is not None:
-        return prd_categories[response]
-    else:
-        raise HttpException('Prediction failed')
+        #print('RA') #############################################""
+        return prd_categories[int(lstm_return[0])]
+    # Returns prdtypecode prediction if only image provided 
+    if vgg16_return is not None and lstm_return is None:
+        #print('RB') #################################################
+        return prd_categories[int(vgg16_return[0])]
+    # Prediction if both image and designation provided
+    if lstm_return is not None and vgg16 is not None:
+        #print('RFile') #############################################""
+        concatenate_proba = (best_weights[0] * lstm_return[1] + best_weights[1] * vgg16_return[1])
+        final_prediction = np.argmax(concatenate_proba)
+        return prd_categories[int(mapper[str(final_prediction)])]
+    # Raise an exception if no prediction is possible
+    raise Exception("La prédiction n\'a pas pu aboutir.")
 
 
 def main():
