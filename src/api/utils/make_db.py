@@ -6,6 +6,7 @@ import numpy as np
 import os
 from passlib.hash import bcrypt
 from dotenv import load_dotenv
+from api.utils.resolve_path import resolve_path
 
 def process_listing(listing_csv_path, prdtypecode_csv_path):
     """
@@ -41,14 +42,14 @@ def init_user_table():
     - user_df (pd.DataFrame): DataFrame containing user data.
     """
     user_data = {
-        'username': ['jc', 'fred', 'wilfried', 'init_user'],
-        'first_name': ['jc', 'fred', 'wilfried', 'init_user'],
-        'access_rights': ['administrator', 'administrator', 'administrator', 'user'],
+        'username': ['jc', 'fred', 'wilfried', 'init_user','test_user','test_admin'],
+        'first_name': ['jc', 'fred', 'wilfried', 'init_user','test_user','test_admin'],
+        'access_rights': ['administrator', 'administrator', 'administrator', 'user','user','administrator'],
         'hashed_password': []
     }
 
     # Hasher les mots de passe
-    passwords = ['jc', 'fred', 'wilfried', 'init_user']
+    passwords = ['jc', 'fred', 'wilfried', 'init_user', 'test_user', 'test_admin']
     hashed_passwords = [bcrypt.hash(password) for password in passwords]
 
     user_data['hashed_password'] = hashed_passwords
@@ -115,16 +116,15 @@ def upload_db(cfg_path, local_path):
     # Upload the initialization database file with the datetime-based filename
     upload_to_s3(s3_conn, local_path, f'db/{filename}')
 
-def init_db(duckdb_path):
+def init_db(duckdb_path, is_test = False):
     """
-    Initialize the DuckDB database.
-
+    Initialize the DuckDB database and save it in duckdb_path (str). 
+    If is_test argument = True, then will only create fact_listings but with the first 100 listings only
     Returns:
         None
     """
-    cfg_path = os.environ['AWS_CONFIG_PATH']
-    data_path = os.environ['DATA_PATH']
-    duckdb_path = os.path.join(data_path, os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
+    cfg_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
+    data_path = resolve_path(os.environ['DATA_PATH'])
     init_listing_csv_path = os.path.join(data_path,'X_train.csv')
     init_prdtypecode_csv_path = os.path.join(data_path,'Y_train.csv')
     init_dim_prdtypecode_csv_path = os.path.join(data_path,'dim_prdtypecode.csv')
@@ -139,6 +139,9 @@ def init_db(duckdb_path):
     listings_df = process_listing(init_listing_csv_path, init_prdtypecode_csv_path)
     user_df = init_user_table()
     dim_prdtypecode = pd.read_csv(init_dim_prdtypecode_csv_path)
+    
+    if is_test:
+        listings_df = listings_df.head(100)
     
     # Connect to DuckDB
     duckdb_conn = duckdb.connect(database=duckdb_path, read_only=False)
