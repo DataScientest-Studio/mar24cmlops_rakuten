@@ -40,7 +40,18 @@ def download_production_model(cfg_path, folder_name, local_download_path):
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        
+
+def download_init_prod_model(cfg_path, local_download_path):
+    """
+    Download the initial model from the production model repository in S3.
+
+    Args:
+        cfg_path (str): The path to the AWS configuration file.
+        local_download_path (str): The local path where the folder will be downloaded.
+    """
+    download_production_model(cfg_path,'init_model', local_download_path)
+    return None
+
 def list_model_repository_folders(cfg_path, is_production):
     """
     List all folders in the model_repository directory of the S3 bucket.
