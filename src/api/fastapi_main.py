@@ -25,8 +25,6 @@ s3_client=None
 db_conn=None
 prd_categories=dict()
 
-
-
 # Load environment variables from .env file
 env_path = resolve_path('.env/.env.development')
 load_dotenv(env_path)
@@ -43,13 +41,12 @@ if not os.path.isfile(duckdb_path):
     download_initial_db(aws_config_path, duckdb_path)
     print('Database Sucessfully Downloaded')
     
-duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
+#duckdb_path = os.path.join(os.environ['DATA_PATH'], os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
 rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
+
 # Download database for the mapping of the results
-
 db_conn = duckdb.connect(database=duckdb_path, read_only=False)
-s3_client = create_s3_conn_from_creds(os.getenv('AWS_CONFIG_PATH'))
-
+s3_client = create_s3_conn_from_creds(aws_config_path)
 
 # Model for listing
 class Listing(BaseModel):
@@ -251,7 +248,7 @@ async def listing_submit(designation : str = None, description : str = None, ima
     db_conn.sql(f"INSERT INTO fact_listings (listing_id,imageid,productid,designation,description,user,waiting_datetime) VALUES ({new_listingid},{new_imageid},{new_productid},{designation},{description},{utilisateur},{waiting_date});")        
 
     # save the image locally
-    save_img(f"data/temporary_images/image_{imageid}_product_{productid}.jpg",img)
+    save_img(resolve_path(f"data/temporary_images/image_{imageid}_product_{productid}.jpg"),img)
     prdtypecode=predict_with_unified_interface(s3_client=s3_client, designation=designation, imageid=new_imageid,productid=new_productid,directory=directory,new_image=new_image,file=img_context)[0] 
 
     # Update of the local database table
