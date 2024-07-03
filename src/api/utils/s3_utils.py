@@ -145,7 +145,7 @@ def upload_folder_to_s3(cfg_path, local_folder, s3_folder):
     with ThreadPoolExecutor() as executor:
         executor.map(lambda local_x_bucket: upload_to_s3(s3_conn, local_x_bucket[0], local_x_bucket[1]), files_to_upload)
 
-    return None
+    return s3_folder
 
 # if __name__ == "__main__":
     
