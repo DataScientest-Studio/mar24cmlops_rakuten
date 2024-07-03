@@ -263,10 +263,13 @@ def predict_with_unified_interface(s3_client = None, designation : str =None, im
         response=vgg16_return[0]
     if lstm_return is not None and vgg16_return is not None:
         response=concatenate_predict(lstm_r=lstm_return[1],vgg16_r=vgg16_return[1])
-    print(response)
-    print(type(response))
+    #print(response)
+    #print(type(response))
     if response is not None:
-        return prd_categories[response]
+        #print(response)
+        #print(type(response))
+        #print(prd_categories)
+        return [response,prd_categories[response]]
     else:
         raise Exception('Prediction failed')
 
@@ -308,8 +311,8 @@ def main():
     # Prediction with both a designation and a chunk of bytes representing an image in memory
     #img=open(os.path.join(prefix,'data/preprocessed/image_train/image_234234_product_184251.jpg'),'rb').read()
     #print(predict_with_unified_interface(file=img, designation="reine roumanie paris"))
-    print(predict_with_unified_interface(new_image='temp.jpg', designation="reine roumanie paris"))
-    print(predict_with_unified_interface(new_image='temp.jpg'))
+    #print(predict_with_unified_interface(new_image='temp.jpg', designation="reine roumanie paris"))
+    #print(predict_with_unified_interface(new_image='temp.jpg'))
     print(predict_with_unified_interface(s3_client=client, imageid=1007738129,productid=435130019))
     
 if __name__=="__main__":

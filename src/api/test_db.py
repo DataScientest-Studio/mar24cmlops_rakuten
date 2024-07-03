@@ -44,14 +44,15 @@ print(len(liste))
 print(conn.sql('select * from fact_listings where imageid=234234;').fetchone())
 print(conn.sql('select listing_id from fact_listings where imageid=234234;').fetchone())
 print(conn.sql('show table fact_listings;').fetchall())
-liste2=[i[0] for i in conn.sql('show table fact_listings;').fetchall()]
-for i in liste2:
-    a=conn.sql(f'select {i} from fact_listings where imageid=234234;').fetchone()
-    print(f'{i} : {a[0]}')
+
+#liste2=[i[0] for i in conn.sql('show table fact_listings;').fetchall()]
+#for i in liste2:
+#    a=conn.sql(f'select {i} from fact_listings where imageid=234234;').fetchone()
+#    print(f'{i} : {a[0]}')
     
 #print(conn.sql('select * from dim_prdtypecode;').fetchall())
 
-print(conn.sql('select * from fact_listings limit 10;').fetchall())
+#print(conn.sql('select * from fact_listings limit 10;').fetchall())
 
 
 results = conn.sql("select * from fact_listings limit 10;").df()
@@ -70,9 +71,12 @@ print(results.info())
 liste=os.listdir('/mnt/c/Users/USER/Projet-Rakuten/images/image_test/')
 #print(liste)
 #print(liste[10][:-4])
-listeA=[i for i in liste if i[-4:]=='.jpg']
-print(listeA)
-for i in np.random.choice(np.array(len(listeA)),100):
-    download_from_s3(s3_conn=s3_client, 
-                 bucket_path =f"image_test/{listeA[i]}",
-                local_path =os.path.join(os.getcwd(),'coucou.jpg'))
+
+#listeA=[i for i in liste if i[-4:]=='.jpg']
+#print(listeA)
+#for i in np.random.choice(np.array(len(listeA)),100):
+#    download_from_s3(s3_conn=s3_client, 
+#                 bucket_path =f"image_test/{listeA[i]}",
+#                local_path =os.path.join(os.getcwd(),'coucou.jpg'))
+    
+print(conn.sql(f"SELECT * FROM fact_listings WHERE imageid=1 AND productid=0;").fetchone())
