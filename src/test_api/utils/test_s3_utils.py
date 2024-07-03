@@ -90,7 +90,7 @@ def test_download_from_s3(setup):
     Test function for downloading a file from S3.
     """
     s3_conn = create_s3_conn_from_creds(setup['cfg_path'])
-    local_path = '/tmp/downloaded_file.jpg'  # Temporary local path for download
+    local_path = os.path.join(setup['local_test_folder'], 'downloaded_file.jpg')  # Temporary local path for download
     bucket_path = 'test/downloaded_file.jpg'  # Path to file in S3 bucket
     download_from_s3(s3_conn, bucket_path, local_path)
     assert os.path.exists(local_path)
