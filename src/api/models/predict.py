@@ -74,6 +74,10 @@ def path_to_img(img_path):
     img=load_img(img_path,target_size=(224,224,3))
     return img
 
+def byte_to_img(file):
+    img=load_img(BytesIO(file),target_size=(224,224,3))
+    return img
+
 def process_img(img):
     img_array = img_to_array(img)
     img_array = preprocess_input(img_array)
@@ -100,11 +104,17 @@ def load_model(is_production = True):
     #txt_model, img_model, concat_model = None
     #return txt_model, img_model, concat_model
     
-# Loads the trained models for the text and image predictions
+def predict_existing_listing():
+    pass
 
-# Loads the weights for the concatenation of the results of the previous models
-# with open(os.path.join(prefix,"models/production_model/best_weights.pkl"),"rb") as file :
-#     best_weights=pickle.load(file)
+def predict(designation, image, txt_model, img_model, tokenizer):
+    
+    text_sequence = process_txt(designation,tokenizer)
+    img_array = 
+    
+    _, txt_prob = predict_text(txt_model, text_sequence, mapper)
+    _, img_prob = predict_img(img_model, img_array, mapper)
+    
 
 lemmatizer, tokenizer, stop_words, lstm = load_txt_utils()
 vgg16 = load_img_utils()
@@ -122,3 +132,5 @@ print(prob2)
 
 agg_pred = agg_prediction(prob1, prob2, mapper, best_weights)
 print(agg_pred)
+
+#### Creeer une classe model pour faciliter 
