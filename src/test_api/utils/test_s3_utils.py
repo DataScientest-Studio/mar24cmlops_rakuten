@@ -1,7 +1,5 @@
 import pytest
 import os
-import boto3
-import shutil
 from api.utils.resolve_path import resolve_path
 from dotenv import load_dotenv
 from api.utils.s3_utils import load_aws_cfg, create_s3_conn_from_creds, download_from_s3, upload_to_s3, upload_file_list_to_s3, upload_folder_to_s3
