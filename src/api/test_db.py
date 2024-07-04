@@ -80,3 +80,4 @@ liste=os.listdir('/mnt/c/Users/USER/Projet-Rakuten/images/image_test/')
 #                local_path =os.path.join(os.getcwd(),'coucou.jpg'))
     
 print(conn.sql(f"SELECT * FROM fact_listings WHERE imageid=1 AND productid=0;").fetchone())
+print(conn.sql('SELECT * FROM dim_prdtypecode;').fetchall())

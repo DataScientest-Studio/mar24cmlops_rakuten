@@ -248,7 +248,7 @@ async def listing_submit(designation : str = None, description : str = None, ima
     db_conn.sql(f"INSERT INTO fact_listings (listing_id,imageid,productid,designation,description,user,waiting_datetime) VALUES ({new_listingid},{new_imageid},{new_productid},{designation},{description},{utilisateur},{waiting_date});")        
 
     # save the image locally
-    save_img(resolve_path(f"data/temporary_images/image_{new_imageid}_product_{new_productid}.jpg"),img)
+    save_img(f"data/temporary_images/image_{new_imageid}_product_{new_productid}.jpg",img)
     prdtypecode=predict_with_unified_interface(s3_client=s3_client, designation=designation, imageid=new_imageid,productid=new_productid,directory=directory,new_image=new_image,file=img_context)[0] 
 
     # Update of the local database table
