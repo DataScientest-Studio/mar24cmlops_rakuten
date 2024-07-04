@@ -36,13 +36,13 @@ class Model:
             folder = 'production_model'
         else:
             folder = 'staging_models'
+            if self.version == 'latest':
+                versions = sorted(os.listdir(base_path))
+                version = versions[-1]
+                
+                base_path = resolve_path(f'models/{folder}/{version}/')
         base_path = resolve_path(f'models/{folder}/')
-        # if self.version == 'latest':
-        #     versions = sorted(os.listdir(base_path))
-        #     version = versions[-1] if versions else ''
-        # else:
-        #     version = self.version
-        # return os.path.join(base_path, version)
+        
         return base_path
     
     def load_txt_utils(self):
@@ -90,10 +90,10 @@ class Model:
     def path_to_img(self, img_path):
         img = load_img(img_path, target_size=(224, 224, 3))
         return img
-    
+
     def byte_to_img(self, file):
         img = load_img(BytesIO(file), target_size=(224, 224, 3))
-        return img
+        return img    
     
     def process_img(self, img):
         img_array = img_to_array(img)
@@ -128,6 +128,7 @@ class Model:
         return agg_pred
 
 # Utilisation de la classe Model
-model = Model(model_type='production', version='latest')
-prediction = model.predict('Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
-print(prediction)
+
+# model = Model(model_type='production', version='latest')
+# prediction = model.predict('Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
+# print(prediction)

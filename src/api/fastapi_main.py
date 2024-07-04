@@ -9,6 +9,7 @@ from api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
 from api.utils.resolve_path import resolve_path
+from api.utils import predict, model_list
 
 # Load environment variables from .env file
 env_path = resolve_path('.env/.env.development')
@@ -194,3 +195,7 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
     listing_id_added = conn.execute(sql).fetchall()[0][0]
 
     return {"message": f"Listing {listing_id_added} added successfully"}
+
+@app.get('/')
+async def predict_endpoint(designation: str, image_path: str):
+    return predict(model_list, designation, resolve_path(image_path))
