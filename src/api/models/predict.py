@@ -14,6 +14,7 @@ import re
 import numpy as np
 import json
 from io import BytesIO
+import pickle
 
 # Une fonction de preprocessing, une fonction de prediction,
 # une fonction de chargement de modele
@@ -37,9 +38,14 @@ def load_img_utils():
     return vgg16
 
 def load_model_utils():
+    
     with open(os.path.join(resolve_path('models/production_model/'),"mapper.json"), "r") as json_file:
         mapper = json.load(json_file)
-        return mapper
+        
+    with open(os.path.join(resolve_path('models/production_model/'),"best_weights.pkl"),"rb") as file :
+        best_weights=pickle.load(file)
+        
+    return mapper, best_weights
 
 def process_txt(text,tokenizer):
     
@@ -74,15 +80,20 @@ def process_img(img):
     return img_array
 
 def predict_text(model, text_sequence, mapper):
-    lstm_proba=model.predict([text_sequence])
-    pred = np.argmax(lstm_proba)   
-    return [int(mapper[str(pred)]),lstm_proba]
+    probability = model.predict([text_sequence])
+    pred = np.argmax(probability)   
+    return int(mapper[str(pred)]), probability
 
 def predict_img(model, img_array, mapper):
     images = tf.convert_to_tensor([img_array], dtype=tf.float32)
     probability = model.predict([images]) 
-    final_prediction = np.argmax(probability)
-    return [int(mapper[str(final_prediction)]),probability]
+    pred = np.argmax(probability)
+    return int(mapper[str(pred)]), probability
+
+def agg_prediction(txt_prob, img_prob, mapper, best_weights):
+    concatenate_proba = (best_weights[0] * txt_prob + best_weights[1] * img_prob)
+    pred = np.argmax(concatenate_proba)
+    return int(mapper[str(pred)]) 
 
 def load_model(is_production = True):
     pass
@@ -97,14 +108,17 @@ def load_model(is_production = True):
 
 lemmatizer, tokenizer, stop_words, lstm = load_txt_utils()
 vgg16 = load_img_utils()
-mapper = load_model_utils()
+mapper, best_weights = load_model_utils()
 seq = process_txt('Zazie dans le métro est un livre intéressant de Raymond Queneau', tokenizer)
 
 print(seq)
 print(type(seq))
-pred = predict_text(lstm, seq, mapper)
-print(pred)
+_ , prob1 = predict_text(lstm, seq, mapper)
+print(prob1)
 img = path_to_img(resolve_path('data/zazie.jpg'))
 img = process_img(img)
-pred2 = predict_img(vgg16, img, mapper)
-print(pred2)
+_, prob2 = predict_img(vgg16, img, mapper)
+print(prob2)
+
+agg_pred = agg_prediction(prob1, prob2, mapper, best_weights)
+print(agg_pred)
