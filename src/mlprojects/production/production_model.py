@@ -117,9 +117,15 @@ class production_model:
         pred = np.argmax(concatenate_proba)
         return int(self.mapper[str(pred)]) 
     
-    def predict(self, designation, image_path):
+    def predict(self, designation, image):
         text_sequence = self.process_txt(designation)
-        img = self.path_to_img(image_path)
+        if isinstance(image, str):  # If image is a path
+            img = self.path_to_img(image)
+        elif isinstance(image, bytes):  # If image is bytes
+            img = self.byte_to_img(image)
+        else:
+            raise ValueError("Image must be a file path or bytes.")
+        
         img_array = self.process_img(img)
         
         _, txt_prob = self.predict_text(text_sequence)
@@ -127,9 +133,12 @@ class production_model:
         
         agg_pred = self.agg_prediction(txt_prob, img_prob)
         return agg_pred
-
+    
 # Utilisation de la classe Model
 
-# model = Model(model_type='production', version='latest')
+# model = production_model(model_type='production', version='latest')
 # prediction = model.predict('Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
 # print(prediction)
+
+# prediction_from_bytes = model.predict_from_byte('Zazie dans le métro est un livre intéressant de Raymond Queneau', image_bytes)
+# print(prediction_from_bytes)

@@ -41,3 +41,4 @@ def load_models_from_file(file_path):
 mdl_list = load_models_from_file(resolve_path('models/model_list.txt'))
 pred = mdl_list[0].predict('Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
 print(pred)
+print(predict(mdl_list, 'Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg')))

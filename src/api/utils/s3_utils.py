@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from api.utils.resolve_path import resolve_path
 from dotenv import load_dotenv
 
-
 def load_aws_cfg(file_path):
     """
     Load AWS credentials and role parameters from a configuration file.
