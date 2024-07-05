@@ -20,6 +20,10 @@ aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
 duckdb_path = os.path.join(resolve_path(os.environ['DATA_PATH']), os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
 encrypted_file_path = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']), '.encrypted')
 
+# Model list 
+
+model_list = []
+
 # Check if the DuckDB database file exists locally, if not, download it from S3
 if not os.path.isfile(duckdb_path):
     print('No Database Found locally')

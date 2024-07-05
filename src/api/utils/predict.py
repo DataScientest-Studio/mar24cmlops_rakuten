@@ -31,7 +31,7 @@ def load_models_from_file(file_path):
                     spec.loader.exec_module(module)
 
                     # Récupérer la classe du modèle (supposant que le nom de la classe est Model)
-                    model_class = getattr(module, 'Model')
+                    model_class = getattr(module, f'{model_name}')
 
                     # Instancier le modèle et l'ajouter à la liste
                     model_instance = model_class()

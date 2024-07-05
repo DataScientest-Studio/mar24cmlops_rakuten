@@ -16,10 +16,11 @@ import json
 from io import BytesIO
 import pickle
 
-class Model:
-    def __init__(self, model_type='production', version='latest'):
+class production_model:
+    def __init__(self, model_type='production', version='latest', model_name = None):
         self.model_type = model_type
         self.version = version
+        self.model_name = model_name
         self.lemmatizer = None
         self.tokenizer = None
         self.stop_words = None
