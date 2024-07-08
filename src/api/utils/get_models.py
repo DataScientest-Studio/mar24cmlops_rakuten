@@ -82,7 +82,6 @@ def download_model_list(cfg_path, model_list_file):
     with open(model_list_file, 'r') as f:
         lines = f.readlines()
 
-    production_found = False  # Flag to track if production has been found
     for line in lines:
         line = line.strip()
         if line.startswith('#') or line == '':
@@ -99,13 +98,12 @@ def download_model_list(cfg_path, model_list_file):
         version = parts[2].strip()
 
         # Determine is_production based on the first occurrence of 'production'
-        if folder_type == 'production' and not production_found:
+        if folder_type == 'production':
             is_production = True
             folder_type = 'production_model'  # Use specific folder type for production
-            production_found = True
         else:
             is_production = False
-            folder_type = 'staging_models'  # Use specific folder type for staging
+            folder_type = 'staging_models'
 
         # If version is 'latest', get the latest version from S3
         if version == 'latest':
@@ -209,14 +207,21 @@ def get_model_latest_version(cfg_path, is_production, model_name):
             return None
         
         # Extract version timestamps from keys
-        versions = [obj['Key'].split('/')[-2] for obj in response['Contents']]
+        versions = []
+        for obj in response['Contents']:
+            try:
+                version_str = obj['Key'].split('/')[-2]
+                version_dt = datetime.strptime(version_str, '%Y%m%d_%H-%M-%S')
+                versions.append((version_dt, version_str))
+            except ValueError:
+                continue
         
         # Find the latest version
         if versions:
-            latest_version = sorted(versions)[-1]
-            return latest_version
+            latest_version = max(versions, key=lambda x: x[0])
+            return latest_version[1]
         else:
-            print(f"No versions found for model {model_name} in S3 bucket")
+            print(f"No valid versions found for model {model_name} in S3 bucket")
             return None
 
     except Exception as e:

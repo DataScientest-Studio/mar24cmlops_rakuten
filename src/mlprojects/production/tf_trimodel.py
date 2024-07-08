@@ -16,11 +16,14 @@ import json
 from io import BytesIO
 import pickle
 
-class production_model:
-    def __init__(self, model_name, model_type='production', version='latest'):
+class tf_trimodel:
+    def __init__(self, model_name, version, model_type):
         self.model_type = model_type
         self.version = version
-        self.model_name = model_name
+        if model_name is None:
+            self.model_name = type(self).__name__  # Utilise le nom de la classe comme nom par défaut
+        else:
+            self.model_name = model_name
         self.lemmatizer = None
         self.tokenizer = None
         self.stop_words = None
@@ -33,17 +36,19 @@ class production_model:
         self.load_model_utils()
     
     def get_model_path(self):
-        if self.model_type == 'production':
-            folder = 'production_model'
-        else:
-            folder = 'staging_models'
-            if self.version == 'latest':
-                versions = sorted(os.listdir(base_path))
-                version = versions[-1]
-                
-                base_path = resolve_path(f'models/{folder}/{self.model_name}/{version}/')
-        base_path = resolve_path(f'models/{folder}/{self.model_name}/')
         
+        # Determine folder type based on model_type
+        folder = 'production_model' if self.model_type == 'production' else 'staging_models'
+
+        # Determine version folder
+        # if self.version == 'latest':
+        #     versions = sorted(os.listdir(resolve_path(f'models/{folder}/{self.model_name}/')))
+        #     version = versions[-1]
+        # else:
+        #     version = self.version
+
+        # Construct base path
+        base_path = resolve_path(f'models/{folder}/{self.model_name}/{self.version}/')
         return base_path
     
     def load_txt_utils(self):
@@ -54,7 +59,6 @@ class production_model:
         self.stop_words = set(stopwords.words("french"))
         
         model_path = self.get_model_path()
-        print(model_path)
         with open(os.path.join(model_path, "tokenizer_config.json"), "r", encoding="utf-8") as json_file:
             tokenizer_config = json_file.read()
         self.tokenizer = tokenizer_from_json(tokenizer_config)
@@ -136,9 +140,9 @@ class production_model:
     
 # Utilisation de la classe Model
 
-# model = production_model(model_type='production', version='latest')
+# model = tf_trimodel(model_type='production', version='latest')
 # prediction = model.predict('Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
 # print(prediction)
 
-# prediction_from_bytes = model.predict_from_byte('Zazie dans le métro est un livre intéressant de Raymond Queneau', image_bytes)
+# prediction_from_bytes = model.predict('Zazie dans le métro est un livre intéressant de Raymond Queneau', image_bytes)
 # print(prediction_from_bytes)
