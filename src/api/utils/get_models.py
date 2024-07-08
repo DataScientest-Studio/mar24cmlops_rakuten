@@ -35,12 +35,14 @@ def download_model(cfg_path, model_name, version, local_download_path, is_produc
     else:
         # If version is 'latest', determine the latest version
         if version == 'latest':
-            model_versions = list_model_repository_folders(cfg_path, is_production)
-            if model_name in model_versions and model_versions[model_name]:
-                version = sorted(model_versions[model_name])[-1]  # Get the latest version
-            else:
+            version = get_model_latest_version(cfg_path, is_production, model_name)
+            if version is None:
                 print(f"No versions found for model {model_name} in S3 bucket")
                 return None
+            else:
+                print(f"Latest version found for {model_name}: {version}")
+        
+        # Define S3 prefix with specific version
         s3_prefix = f"model_repository/{folder_type}/{model_name}/{version}/"
 
     # List objects in the specified folder
@@ -71,6 +73,11 @@ def download_model_list(cfg_path, model_list_file):
     Args:
         cfg_path (str): The path to the AWS configuration file.
         model_list_file (str): Path to the model list file (model_list.txt).
+        
+    Example:
+        load_dotenv(resolve_path('.env/.env.development'))
+        aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
+        download_model_list(aws_config_path,resolve_path('models/model_list.txt'))
     """
     with open(model_list_file, 'r') as f:
         lines = f.readlines()
@@ -99,6 +106,15 @@ def download_model_list(cfg_path, model_list_file):
         else:
             is_production = False
             folder_type = 'staging_models'  # Use specific folder type for staging
+
+        # If version is 'latest', get the latest version from S3
+        if version == 'latest':
+            version = get_model_latest_version(cfg_path, is_production, model_name)
+            if version is None:
+                print(f"No versions found for model {model_name} in S3 bucket")
+                continue
+            else:
+                print(f"Latest version found for {model_name}: {version}")
 
         # Define local download path based on model_name and version
         local_download_path = os.path.join('models/', folder_type, model_name, version)
@@ -157,7 +173,56 @@ def list_model_repository_folders(cfg_path, is_production):
     except Exception as e:
         print(f"An error occurred: {e}")
         return {}
+    
+def get_model_latest_version(cfg_path, is_production, model_name):
+    """
+    Get the latest version of a model from the model repository in S3.
 
+    Args:
+        cfg_path (str): The path to the AWS configuration file.
+        is_production (bool): If True, retrieve from the production directory; otherwise, retrieve from the staging directory.
+        model_name (str): The name of the model to get the latest version for.
+
+    Returns:
+        str: The latest version of the model in format 'YYYYMMDD_HH-MM-SS', or None if no versions are found.
+    
+    Example:
+        load_dotenv(resolve_path('.env/.env.development'))
+        aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
+        get_model_latest_version(aws_config_path, False, 'tf_trimodel')
+    """
+    # Create S3 connection
+    s3_conn = create_s3_conn_from_creds(cfg_path)
+
+    # Determine folder type based on is_production
+    folder_type = 'production' if is_production else 'staging'
+
+    # Define S3 bucket and prefix
+    bucket_name = "rakutenprojectbucket"
+    s3_prefix = f"model_repository/{folder_type}/{model_name}/"
+
+    # List objects in the specified prefix
+    try:
+        response = s3_conn.list_objects_v2(Bucket=bucket_name, Prefix=s3_prefix)
+        if 'Contents' not in response:
+            print(f"No objects found in S3 bucket at {s3_prefix}")
+            return None
+        
+        # Extract version timestamps from keys
+        versions = [obj['Key'].split('/')[-2] for obj in response['Contents']]
+        
+        # Find the latest version
+        if versions:
+            latest_version = sorted(versions)[-1]
+            return latest_version
+        else:
+            print(f"No versions found for model {model_name} in S3 bucket")
+            return None
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+    
 def upload_model_to_repository(cfg_path, local_model_folder, model_name, is_production):
     """
     Upload a model folder to the S3 model repository with datetime-based folder name.
@@ -189,7 +254,3 @@ def upload_model_to_repository(cfg_path, local_model_folder, model_name, is_prod
     upload_folder_to_s3(cfg_path, local_model_folder, s3_folder_prefix)
     
     return s3_folder_prefix
-
-load_dotenv(resolve_path('.env/.env.development'))
-aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
-download_model_list(resolve_path(aws_config_path), resolve_path('models/model_list.txt'))
