@@ -119,3 +119,4 @@ models/staging_models/*
 !models/production_model/README.md
 !models/staging_models/README.md
 !models/README.md
+!models/model_list.txt

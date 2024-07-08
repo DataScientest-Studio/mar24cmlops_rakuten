@@ -17,7 +17,7 @@ from io import BytesIO
 import pickle
 
 class production_model:
-    def __init__(self, model_type='production', version='latest', model_name = None):
+    def __init__(self, model_name, model_type='production', version='latest'):
         self.model_type = model_type
         self.version = version
         self.model_name = model_name
@@ -41,8 +41,8 @@ class production_model:
                 versions = sorted(os.listdir(base_path))
                 version = versions[-1]
                 
-                base_path = resolve_path(f'models/{folder}/{version}/')
-        base_path = resolve_path(f'models/{folder}/')
+                base_path = resolve_path(f'models/{folder}/{self.model_name}/{version}/')
+        base_path = resolve_path(f'models/{folder}/{self.model_name}/')
         
         return base_path
     

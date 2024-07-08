@@ -200,6 +200,37 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
 
     return {"message": f"Listing {listing_id_added} added successfully"}
 
-@app.get('/')
-async def predict_endpoint(designation: str, image_path: str):
-    return predict(model_list, designation, resolve_path(image_path))
+# @app.get('/predict')
+# async def predict_from_listing(listing_id: str):
+    
+#     # Here we can ask a prediction from our models for an already existing listing
+    
+#     # Si on soumet une image et texte, alors on predit tranquillement
+    
+#     return predict(model_list, designation, resolve_path(image_path))
+# @app.get('/predict_listing')
+# async def predict_from_listing(listing_id: str):
+    
+#     # Here we can ask a prediction from our models for an already existing listing
+    
+#     # Si on soumet une image et texte, alors on predit tranquillement
+    
+#     return predict(model_list, designation, resolve_path(image_path))
+
+# @app.get('/listing_submit')
+# async def predict_from_submission(designation: str, image_path: str):
+    
+#     # Si on propose une annonce, on va chercher l'annonce et on recupere l'image
+#     # puis on prédit
+    
+#     # Si on soumet une image et texte, alors on predit tranquillement
+#     return predict(model_list, designation, resolve_path(image_path))
+
+# @app.get('/listing_validate')
+# async def predict_from_submission(designation: str, image_path: str):
+    
+#     # Si on propose une annonce, on va chercher l'annonce et on recupere l'image
+#     # puis on prédit
+    
+#     # Si on soumet une image et texte, alors on predit tranquillement
+#     return predict(model_list, designation, resolve_path(image_path))
