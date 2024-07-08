@@ -1,5 +1,5 @@
 from datetime import timedelta
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 import duckdb
@@ -190,29 +190,52 @@ async def delete_listing(listing_id: int, current_user: dict = Depends(get_curre
     conn.execute(f"DELETE FROM fact_listings WHERE listing_id = {listing_id}")
     return {"message": "Listing deleted successfully"}
 
-# Add listing endpoint
-@app.post("/add_listing")
-async def add_listing(listing: Listing, current_user: dict = Depends(get_current_user)):
-    """
-    Endpoint to add a new listing.
 
-    Args:
-        listing (Listing): Listing information to be added.
-        current_user (dict): Dictionary containing current user information.
-
-    Returns:
-        dict: Message indicating success or failure.
+@app.post("/listing_submit")
+async def listing_submit(
+    description: str = Form(...),
+    designation: str = Form(...),
+    image: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    # Build the SQL query for insertion
+    sql_insert = f"""
+        INSERT INTO fact_listings (listing_id, description, designation, user, productid, imageid)
+        SELECT 
+            IFNULL(MAX(listing_id), 0) + 1 AS new_listing_id,
+            '{description}' AS description,
+            '{designation}' AS designation,
+            '{current_user["username"]}' AS username,
+            IFNULL(MAX(productid), 0) + 1 AS new_product_id,
+            IFNULL(MAX(imageid), 0) + 1 AS new_image_id
+        FROM fact_listings;
+        SELECT MAX(listing_id), MAX(productid), MAX(imageid) FROM fact_listings;
     """
-    sql = f"""
-            INSERT INTO fact_listings (listing_id, description, user)
-            SELECT IFNULL(MAX(listing_id), 0) + 1, '{listing.description}', '{current_user["username"]}'
-            FROM fact_listings;
-            SELECT MAX(listing_id) FROM fact_listings;
-        """ 
+
+    # Execute the insertion query
+    result = conn.execute(sql_insert).fetchall()[0]
+
+    new_listing_id = result[0]
+    new_productid = result[1]
+    new_imageid = result[2]
     
-    listing_id_added = conn.execute(sql).fetchall()[0][0]
+    # Save the uploaded image
+    image_path = resolve_path(f"data/images/submitted_images/image_{new_imageid}_product_{new_productid}.jpg")
+    with open(image_path, "wb") as image_file:
+        image_file.write(image.file.read())
 
-    return {"message": f"Listing {listing_id_added} added successfully"}
+    # Predict using the loaded models
+    pred = predict_from_list_models(mdl_list, designation, image_path)
+
+    # Construct and return the response
+    response = {
+        "message": f"Listing added successfully",
+        "listing_id": new_listing_id,
+        "product_id": new_productid,
+        "image_id": new_imageid,
+        "prediction": pred
+    }
+    return response
 
 @app.get('/predict_from_listing')
 async def predict_from_listing(listing_id: str):
