@@ -107,13 +107,13 @@ class tf_trimodel:
         return img_array
     
     def predict_text(self, text_sequence):
-        probability = self.lstm.predict([text_sequence])
+        probability = self.lstm.predict([text_sequence], verbose = 0)
         pred = np.argmax(probability)   
         return int(self.mapper[str(pred)]), probability
     
     def predict_img(self, img_array):
         images = tf.convert_to_tensor([img_array], dtype=tf.float32)
-        probability = self.vgg16.predict([images]) 
+        probability = self.vgg16.predict([images], verbose = 0) 
         pred = np.argmax(probability)
         return int(self.mapper[str(pred)]), probability
     

@@ -11,31 +11,46 @@ import jwt
 from api.utils.resolve_path import resolve_path
 from api.utils import predict
 from api.utils.predict import load_models_from_file, predict_from_list_models
+from contextlib import asynccontextmanager
 
-# Load environment variables from .env file
-env_path = resolve_path('.env/.env.development')
-load_dotenv(env_path)
+# Initialize global variables
 
-# Convert paths to absolute paths
-aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
-duckdb_path = os.path.join(resolve_path(os.environ['DATA_PATH']), os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
-encrypted_file_path = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']), '.encrypted')
+conn = None
+mdl_list = []
 
-# Model list 
+# Context manager for lifespan events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list
 
-model_list = []
-mdl_list = load_models_from_file(aws_config_path,resolve_path('models/model_list.txt'))
+    # Load environment variables from .env file
+    env_path = resolve_path('.env/.env.development')
+    load_dotenv(env_path)
 
-# Check if the DuckDB database file exists locally, if not, download it from S3
-if not os.path.isfile(duckdb_path):
-    print('No Database Found locally')
-    
-    # Since no database found for the API, download the initial database from S3
-    download_initial_db(aws_config_path, duckdb_path)
-    print('Database Sucessfully Downloaded')
-    
-# Load DuckDB connection   
-conn = duckdb.connect(database=duckdb_path, read_only=False)
+    # Convert paths to absolute paths
+    aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
+    duckdb_path = os.path.join(resolve_path(os.environ['DATA_PATH']), os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
+    encrypted_file_path = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']), '.encrypted')
+
+    # Load model list
+    mdl_list = load_models_from_file(aws_config_path, resolve_path('models/model_list.txt'))
+
+    # Check if the DuckDB database file exists locally, if not, download it from S3
+    if not os.path.isfile(duckdb_path):
+        print('No Database Found locally')
+        download_initial_db(aws_config_path, duckdb_path)
+        print('Database Successfully Downloaded')
+
+    # Load DuckDB connection   
+    conn = duckdb.connect(database=duckdb_path, read_only=False)
+
+    yield
+
+    # Clean up resources
+    conn.close()
+
+# Initialize FastAPI app
+app = FastAPI(lifespan=lifespan)
 
 # Model for listing
 class Listing(BaseModel):
@@ -66,9 +81,6 @@ def authenticate_user(username: str, password: str):
 
 # Define OAuth2 password bearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-# Initialize FastAPI app
-app = FastAPI()
 
 @app.get('/')
 def get_index():
