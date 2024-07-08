@@ -4,7 +4,7 @@ from api.utils.resolve_path import resolve_path
 from api.utils.get_models import get_model_latest_version
 from dotenv import load_dotenv
 
-def predict(models, designation, image_path):
+def predict_from_list_models(models, designation, image_path):
     predictions = {}
     for i, model in enumerate(models, start=1):
         pred = model.predict(designation, image_path)
@@ -64,9 +64,8 @@ def load_models_from_file(cfg_path, model_list_file):
     
     return models
 
-load_dotenv(resolve_path('.env/.env.development'))
-aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
-mdl_list = load_models_from_file(aws_config_path,resolve_path('models/model_list.txt'))
-pred = mdl_list[0].predict('Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
-print(pred)
-print(predict(mdl_list, 'Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg')))
+# load_dotenv(resolve_path('.env/.env.development'))
+# aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
+# mdl_list = load_models_from_file(aws_config_path,resolve_path('models/model_list.txt'))
+# print(pred)
+# print(predict_from_list_models(mdl_list, 'Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg')))

@@ -9,7 +9,8 @@ from api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
 from api.utils.resolve_path import resolve_path
-from api.utils import predict, model_list
+from api.utils import predict
+from api.utils.predict import load_models_from_file, predict_from_list_models
 
 # Load environment variables from .env file
 env_path = resolve_path('.env/.env.development')
@@ -23,6 +24,7 @@ encrypted_file_path = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER'])
 # Model list 
 
 model_list = []
+mdl_list = load_models_from_file(aws_config_path,resolve_path('models/model_list.txt'))
 
 # Check if the DuckDB database file exists locally, if not, download it from S3
 if not os.path.isfile(duckdb_path):
@@ -200,14 +202,13 @@ async def add_listing(listing: Listing, current_user: dict = Depends(get_current
 
     return {"message": f"Listing {listing_id_added} added successfully"}
 
-# @app.get('/predict')
-# async def predict_from_listing(listing_id: str):
+@app.get('/predict_from_listing')
+async def predict_from_listing(listing_id: str):
     
-#     # Here we can ask a prediction from our models for an already existing listing
+    pred = predict_from_list_models(mdl_list,'Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
     
-#     # Si on soumet une image et texte, alors on predit tranquillement
-    
-#     return predict(model_list, designation, resolve_path(image_path))
+    return pred
+
 # @app.get('/predict_listing')
 # async def predict_from_listing(listing_id: str):
     
