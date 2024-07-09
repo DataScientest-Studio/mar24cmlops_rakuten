@@ -120,3 +120,4 @@ models/staging_models/*
 !models/staging_models/README.md
 !models/README.md
 !models/model_list.txt
+data/rakuten_db.duckdb.wal

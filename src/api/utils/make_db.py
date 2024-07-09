@@ -150,3 +150,6 @@ def init_db(duckdb_path, is_test = False):
     create_table_from_pd_into_duckdb(duckdb_conn, listings_df, 'fact_listings')
     create_table_from_pd_into_duckdb(duckdb_conn, user_df, 'dim_user')
     create_table_from_pd_into_duckdb(duckdb_conn, dim_prdtypecode, 'dim_prdtypecode')
+    
+    model_prdtypecode_to_varchar_sql = "ALTER TABLE fact_listings ALTER COLUMN model_prdtypecode SET DATA TYPE VARCHAR;"
+    duckdb_conn.execute(model_prdtypecode_to_varchar_sql)

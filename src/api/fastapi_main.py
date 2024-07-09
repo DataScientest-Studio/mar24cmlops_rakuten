@@ -11,6 +11,7 @@ import jwt
 from api.utils.resolve_path import resolve_path
 from api.utils.predict import load_models_from_file, predict_from_list_models
 from contextlib import asynccontextmanager
+import json
 
 # Initialize global variables
 
@@ -262,6 +263,12 @@ async def listing_submit(
 
     # Predict using the loaded models
     pred = predict_from_list_models(mdl_list, listing.designation, image_path)
+    # Convert prediction dictionary to a JSON string
+    pred_json = json.dumps(pred)
+    
+    # Inserting modele pred into table
+    sql_prediction_insert = f"UPDATE fact_listings SET model_prdtypecode = {pred_json} WHERE listing_id = {new_listing_id}"
+    conn.execute(sql_prediction_insert)
 
     # Construct and return the response
     response = {
