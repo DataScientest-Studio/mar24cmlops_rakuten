@@ -80,6 +80,10 @@ class Listing(BaseModel):
 class ListingWithImage(Listing):
     image: UploadFile = File(...)
     
+class ValidateListing(BaseModel):
+    listing_id: int
+    user_prdtypecode: int
+    
 # Auth User function
 def authenticate_user(username: str, password: str):
     """
@@ -268,6 +272,39 @@ async def listing_submit(
         "prediction": pred
     }
     return response
+
+@app.post("/listing_validate")
+async def listing_validate(
+    validation: ValidateListing,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Endpoint to validate a listing by inserting user_prdtypecode.
+
+    Args:
+        validation (ValidateListing): The listing ID and user_prdtypecode to be inserted.
+        current_user (dict): Dictionary containing current user information.
+
+    Returns:
+        dict: Message indicating success or failure.
+    """
+    # Check if user has permission to validate listing
+    cursor = conn.execute(f"SELECT user FROM fact_listings WHERE listing_id = {validation.listing_id}")
+    result = cursor.fetchone()
+    if not result:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    if result[0] != current_user["username"]:
+        raise HTTPException(status_code=403, detail="This user is not the owner of this listing_id")
+
+    # Insert into table the user_prdtypecode
+    try:
+        conn.execute(
+            f"UPDATE fact_listings SET user_prdtypecode = {validation.user_prdtypecode} WHERE listing_id = {validation.listing_id}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
+
+    return {"message": f"Listing {validation.listing_id} validated successfully with user_prdtypecode {validation.user_prdtypecode}"}
 
 
 
