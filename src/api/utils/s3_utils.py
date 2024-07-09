@@ -4,7 +4,6 @@ import os
 from api.utils.security import decrypt_file
 from concurrent.futures import ThreadPoolExecutor
 from api.utils.resolve_path import resolve_path
-from dotenv import load_dotenv
 
 
 def load_aws_cfg(file_path):
@@ -17,18 +16,21 @@ def load_aws_cfg(file_path):
     Returns:
         dict: A dictionary containing 'aws_access_key_id', 'aws_secret_access_key', 'role_arn', and 'role_session_name'.
     """
-    decr_file = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']),".aws_config_decr.ini")
-    decrypt_file(os.environ['KEY'], file_path, decr_file)
-    
+    decr_file = os.path.join(
+        resolve_path(os.environ["AWS_CONFIG_FOLDER"]), ".aws_config_decr.ini"
+    )
+    decrypt_file(os.environ["KEY"], file_path, decr_file)
+
     config = configparser.ConfigParser()
     config.read(decr_file)
     aws_cfg = {
-        'aws_access_key_id': config.get('default', 'aws_access_key_id'),
-        'aws_secret_access_key': config.get('default', 'aws_secret_access_key'),
-        'role_arn': config.get('default', 'role_arn'),
-        'role_session_name': config.get('default', 'role_session_name')
+        "aws_access_key_id": config.get("default", "aws_access_key_id"),
+        "aws_secret_access_key": config.get("default", "aws_secret_access_key"),
+        "role_arn": config.get("default", "role_arn"),
+        "role_session_name": config.get("default", "role_session_name"),
     }
     return aws_cfg
+
 
 def assume_role(aws_access_key_id, aws_secret_access_key, role_arn, role_session_name):
     """
@@ -44,15 +46,13 @@ def assume_role(aws_access_key_id, aws_secret_access_key, role_arn, role_session
         dict: A dictionary containing temporary credentials.
     """
     client = boto3.client(
-        'sts',
+        "sts",
         aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key
+        aws_secret_access_key=aws_secret_access_key,
     )
-    response = client.assume_role(
-        RoleArn=role_arn,
-        RoleSessionName=role_session_name
-    )
-    return response['Credentials']
+    response = client.assume_role(RoleArn=role_arn, RoleSessionName=role_session_name)
+    return response["Credentials"]
+
 
 def create_sts_session(credentials):
     """
@@ -65,27 +65,28 @@ def create_sts_session(credentials):
         boto3.Session: A Boto3 session initialized with the temporary credentials.
     """
     return boto3.Session(
-        aws_access_key_id=credentials['AccessKeyId'],
-        aws_secret_access_key=credentials['SecretAccessKey'],
-        aws_session_token=credentials['SessionToken']
+        aws_access_key_id=credentials["AccessKeyId"],
+        aws_secret_access_key=credentials["SecretAccessKey"],
+        aws_session_token=credentials["SessionToken"],
     )
 
+
 def create_s3_conn_from_creds(cfg):
-    
     aws_cfg = load_aws_cfg(cfg)
-    
+
     credentials = assume_role(
-        aws_cfg['aws_access_key_id'], 
-        aws_cfg['aws_secret_access_key'], 
-        aws_cfg['role_arn'], 
-        aws_cfg['role_session_name']
-        )
-    
+        aws_cfg["aws_access_key_id"],
+        aws_cfg["aws_secret_access_key"],
+        aws_cfg["role_arn"],
+        aws_cfg["role_session_name"],
+    )
+
     sts_session = create_sts_session(credentials)
-    
-    return sts_session.client('s3')
-    
-def download_from_s3(s3_conn ,bucket_path, local_path):
+
+    return sts_session.client("s3")
+
+
+def download_from_s3(s3_conn, bucket_path, local_path):
     """
     Download a file from an S3 bucket to a local path.
 
@@ -96,7 +97,8 @@ def download_from_s3(s3_conn ,bucket_path, local_path):
     """
     # Download the file from S3
     s3_conn.download_file("rakutenprojectbucket", bucket_path, local_path)
-    
+
+
 def upload_to_s3(s3_conn, local_path, bucket_path):
     """
     Upload a file from a local path to an S3 bucket.
@@ -108,6 +110,7 @@ def upload_to_s3(s3_conn, local_path, bucket_path):
     # Upload the file to S3
     s3_conn.upload_file(local_path, "rakutenprojectbucket", bucket_path)
 
+
 def upload_file_list_to_s3(s3_conn, local_path_x_bucket_path_tuple):
     """
     Upload a list of files to an S3 bucket in parallel.
@@ -117,7 +120,13 @@ def upload_file_list_to_s3(s3_conn, local_path_x_bucket_path_tuple):
         local_path_x_bucket_path_tuple (list of tuple): A list of tuples where each tuple contains the local path and the bucket path.
     """
     with ThreadPoolExecutor() as executor:
-        executor.map(lambda local_x_bucket: upload_to_s3(s3_conn, local_x_bucket[0], local_x_bucket[1]), local_path_x_bucket_path_tuple)
+        executor.map(
+            lambda local_x_bucket: upload_to_s3(
+                s3_conn, local_x_bucket[0], local_x_bucket[1]
+            ),
+            local_path_x_bucket_path_tuple,
+        )
+
 
 def upload_folder_to_s3(cfg_path, local_folder, s3_folder):
     """
@@ -141,18 +150,24 @@ def upload_folder_to_s3(cfg_path, local_folder, s3_folder):
             relative_path = os.path.relpath(local_file_path, local_folder)
             s3_file_path = os.path.join(s3_folder, relative_path).replace("\\", "/")
             files_to_upload.append((local_file_path, s3_file_path))
-    
+
     # Upload files to S3
     with ThreadPoolExecutor() as executor:
-        executor.map(lambda local_x_bucket: upload_to_s3(s3_conn, local_x_bucket[0], local_x_bucket[1]), files_to_upload)
+        executor.map(
+            lambda local_x_bucket: upload_to_s3(
+                s3_conn, local_x_bucket[0], local_x_bucket[1]
+            ),
+            files_to_upload,
+        )
 
     return None
 
+
 # if __name__ == "__main__":
-    
+
 #     cfg_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/.aws/.aws_config.ini'
 #     s3_conn = create_s3_conn_from_creds(cfg_path)
-    
+
 #     download_from_s3(
 #         s3_conn = s3_conn,
 #         bucket_path = 'imgtest.jpg',
@@ -160,7 +175,7 @@ def upload_folder_to_s3(cfg_path, local_folder, s3_folder):
 #     )
 
 #     upload_to_s3(
-#         s3_conn = s3_conn, 
+#         s3_conn = s3_conn,
 #         local_path = '/mnt/c/Users/cjean/Documents/workspace/mar24cmlops_rakuten/data/imgtest.jpg',
 #         bucket_path = 'imgtest.jpg'
 #     )

@@ -1,4 +1,4 @@
 README
 ==============================
 
-Production Model
+Production Model: The model used in production

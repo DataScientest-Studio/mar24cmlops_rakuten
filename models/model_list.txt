@@ -1,0 +1,3 @@
+# [production or staging], [model name (also name of the python file)], [version: datetime or latest]
+production, tf_trimodel, latest
+staging, tf_trimodel, 20240708_18-02-05
