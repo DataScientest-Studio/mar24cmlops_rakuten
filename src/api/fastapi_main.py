@@ -1,7 +1,7 @@
 from datetime import timedelta
 from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 import duckdb
 import os
 from api.utils.make_db import download_initial_db
@@ -282,7 +282,7 @@ async def listing_submit(
 
 @app.post("/listing_validate")
 async def listing_validate(
-    validation: ValidateListing,
+    validation: ValidateListing = Depends(),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -312,11 +312,6 @@ async def listing_validate(
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
 
     return {"message": f"Listing {validation.listing_id} validated successfully with user_prdtypecode {validation.user_prdtypecode}"}
-
-
-
-
-
 
 # @app.get('/predict_from_listing')
 # async def predict_from_listing(listing_id: str):
