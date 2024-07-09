@@ -66,18 +66,13 @@ def download_model(cfg_path, model_name, version, local_download_path, is_produc
     except Exception as e:
         print(f"An error occurred: {e}")
         
-def download_model_list(cfg_path, model_list_file):
+def verify_and_download_models(cfg_path, model_list_file):
     """
-    Download models specified in model_list_file.
+    Verify the presence of models specified in model_list_file and download if missing.
 
     Args:
         cfg_path (str): The path to the AWS configuration file.
         model_list_file (str): Path to the model list file (model_list.txt).
-        
-    Example:
-        load_dotenv(resolve_path('.env/.env.development'))
-        aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
-        download_model_list(aws_config_path,resolve_path('models/model_list.txt'))
     """
     with open(model_list_file, 'r') as f:
         lines = f.readlines()
@@ -118,8 +113,12 @@ def download_model_list(cfg_path, model_list_file):
         local_download_path = os.path.join('models/', folder_type, model_name, version)
         local_download_path = resolve_path(local_download_path)
 
-        # Download the model
-        download_model(cfg_path, model_name, version, local_download_path, is_production)
+        # Check if the model already exists
+        if not os.path.exists(local_download_path):
+            print(f"Model {model_name} version {version} not found locally. Downloading...")
+            download_model(cfg_path, model_name, version, local_download_path, is_production)
+        else:
+            print(f"Model {model_name} version {version} already exists locally.")
         
 def list_model_repository_folders(cfg_path, is_production):
     """

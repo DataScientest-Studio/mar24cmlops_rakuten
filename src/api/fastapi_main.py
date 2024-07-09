@@ -9,6 +9,7 @@ from api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
 from api.utils.resolve_path import resolve_path
+from api.utils.get_models import verify_and_download_models
 from api.utils.predict import load_models_from_file, predict_from_list_models
 from api.utils.s3_utils import download_from_s3, create_s3_conn_from_creds
 from contextlib import asynccontextmanager
@@ -48,7 +49,10 @@ async def lifespan(app: FastAPI):
     aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
     duckdb_path = os.path.join(resolve_path(os.environ['DATA_PATH']), os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
     encrypted_file_path = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']), '.encrypted')
-
+    
+    # Verify and download models if necessary
+    verify_and_download_models(aws_config_path, resolve_path('models/model_list.txt'))
+    
     # Load model list
     mdl_list = load_models_from_file(aws_config_path, resolve_path('models/model_list.txt'))
 
