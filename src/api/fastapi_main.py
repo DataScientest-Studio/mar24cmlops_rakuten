@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 import json
 from api.utils.write_logs import log_user_action, log_product_action
 
+
 # Context manager for lifespan events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -126,6 +127,7 @@ def authenticate_user(username: str, password: str):
     hashed_password = result[0]
     return verify_password(password, hashed_password)
 
+
 # Get User Rights function
 def get_user_access_rights(username: str):
     """
@@ -168,16 +170,14 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     username = form_data.username
     password = form_data.password
     if not authenticate_user(username, password):
-        
-        log_user_action('/token', username, 401, None)
-        
+        log_user_action("/token", username, 401, None)
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-        
-        
+
     access_rights = get_user_access_rights(username)
     access_token_expires = timedelta(
         minutes=int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"])
@@ -185,9 +185,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": username}, expires_delta=access_token_expires
     )
-    
-    log_user_action('/token', username, 200, access_rights)
-    
+
+    log_user_action("/token", username, 200, access_rights)
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -353,10 +353,12 @@ async def listing_submit(
     # Inserting modele pred into table
     sql_prediction_insert = f"UPDATE fact_listings SET model_prdtypecode = {pred_json} WHERE listing_id = {new_listing_id}"
     conn.execute(sql_prediction_insert)
-    
+
     # Log
-    log_product_action("listing_submit", 200, current_user["username"], new_listing_id, pred_json)
-    
+    log_product_action(
+        "listing_submit", 200, current_user["username"], new_listing_id, pred_json
+    )
+
     # Construct and return the response
     response = {
         "message": "Listing added successfully",
@@ -389,10 +391,14 @@ async def listing_validate(
     )
     result = cursor.fetchone()
     if not result:
-        log_product_action("listing_validate", 404, current_user["username"], validation.listing_id)
+        log_product_action(
+            "listing_validate", 404, current_user["username"], validation.listing_id
+        )
         raise HTTPException(status_code=404, detail="Listing not found")
     if result[0] != current_user["username"]:
-        log_product_action("listing_validate", 403, current_user["username"], validation.listing_id)
+        log_product_action(
+            "listing_validate", 403, current_user["username"], validation.listing_id
+        )
         raise HTTPException(
             status_code=403, detail="This user is not the owner of this listing_id"
         )
@@ -404,9 +410,18 @@ async def listing_validate(
         conn.execute(
             f"UPDATE fact_listings SET user_prdtypecode = {validation.user_prdtypecode}, status = 'validate', validate_datetime = '{validate_datetime}' WHERE listing_id = {validation.listing_id}"
         )
-        log_product_action("listing_validate", 200, current_user["username"], validation.listing_id, None, validation.user_prdtypecode)
+        log_product_action(
+            "listing_validate",
+            200,
+            current_user["username"],
+            validation.listing_id,
+            None,
+            validation.user_prdtypecode,
+        )
     except Exception as e:
-        log_product_action("listing_validate", 500, current_user["username"], validation.listing_id)
+        log_product_action(
+            "listing_validate", 500, current_user["username"], validation.listing_id
+        )
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
 
     return {

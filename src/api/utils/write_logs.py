@@ -3,11 +3,16 @@ from datetime import datetime
 from api.utils.resolve_path import resolve_path
 
 # Configurer les journaux
-logging.basicConfig(level=logging.INFO, format='%(message)s', handlers=[
-    logging.FileHandler(resolve_path("logs/user.log")),
-    logging.FileHandler(resolve_path("logs/product.log")),
-    logging.StreamHandler()
-])
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[
+        logging.FileHandler(resolve_path("logs/user.log")),
+        logging.FileHandler(resolve_path("logs/product.log")),
+        logging.StreamHandler(),
+    ],
+)
+
 
 def log_user_action(endpoint_name, username, return_code, access_rights):
     """
@@ -22,7 +27,15 @@ def log_user_action(endpoint_name, username, return_code, access_rights):
     log_entry = f"{datetime.now()}, [{endpoint_name}], {username}, {return_code}, {access_rights}"
     logging.info(log_entry)
 
-def log_product_action(endpoint_name, return_code, user_id, listing_id, model_prdtypecode=None, user_prdtypecode=None):
+
+def log_product_action(
+    endpoint_name,
+    return_code,
+    user_id,
+    listing_id,
+    model_prdtypecode=None,
+    user_prdtypecode=None,
+):
     """
     Journalise les actions sur les produits.
 
