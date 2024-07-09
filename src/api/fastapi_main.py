@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 import duckdb
 import os
-from api.utils.make_db import download_initial_db
+from api.utils.make_db import download_initial_db, upload_db
 from api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
@@ -74,7 +74,8 @@ async def lifespan(app: FastAPI):
     conn.close()
     s3_conn.close()
     
-    # NEED TO ADD DB UPLOAD AFTER
+    # upload_db
+    #upload_db(aws_config_path, duckdb_path)
 
 # Initialize FastAPI app
 app = FastAPI(lifespan=lifespan)
