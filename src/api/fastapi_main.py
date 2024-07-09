@@ -1,7 +1,7 @@
 from datetime import timedelta
-from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import duckdb
 import os
 from api.utils.make_db import download_initial_db
@@ -9,7 +9,6 @@ from api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
 from api.utils.resolve_path import resolve_path
-from api.utils import predict
 from api.utils.predict import load_models_from_file, predict_from_list_models
 from contextlib import asynccontextmanager
 
@@ -21,6 +20,27 @@ mdl_list = []
 # Context manager for lifespan events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for the FastAPI application.
+
+    This function initializes the necessary environment variables, sets up the database connection,
+    and loads the machine learning models required by the application. It ensures that resources
+    are properly cleaned up when the application is shutting down.
+
+    Args:
+        app (FastAPI): The FastAPI application instance.
+
+    Yields:
+        None
+
+    Note:
+        The following global variables are defined and used:
+            - aws_config_path: Path to AWS configuration.
+            - duckdb_path: Path to the DuckDB database file.
+            - encrypted_file_path: Path to the encrypted file.
+            - conn: DuckDB connection object.
+            - mdl_list: List of loaded machine learning models.
+    """
     global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list
 
     # Load environment variables from .env file
@@ -56,8 +76,9 @@ app = FastAPI(lifespan=lifespan)
 class Listing(BaseModel):
     description: str
     designation: str
-    user_prdtypecode: int
-    imageid: int
+    
+class ListingWithImage(Listing):
+    image: UploadFile = File(...)
     
 # Auth User function
 def authenticate_user(username: str, password: str):
@@ -152,7 +173,7 @@ async def read_listing(listing_id: int, current_user: dict = Depends(get_current
         dict: Dictionary containing listing description.
     """
     # Dummy logic to retrieve listing description based on listing_id
-    cols = ["designation", "description", 
+    cols = ["designation", "description", 'productid', 'imageid',
             "user_prdtypecode", "model_prdtypecode", 
             "waiting_datetime","validate_datetime",
             "status","user","imageid"]
@@ -193,18 +214,29 @@ async def delete_listing(listing_id: int, current_user: dict = Depends(get_curre
 
 @app.post("/listing_submit")
 async def listing_submit(
-    description: str = Form(...),
-    designation: str = Form(...),
-    image: UploadFile = File(...),
+    listing: ListingWithImage = Depends(),
     current_user: dict = Depends(get_current_user)
 ):
+    """
+    Endpoint to submit a new listing along with an image.
+
+    This function handles the insertion of a new listing into the database,
+    saves the uploaded image, and makes a prediction using the loaded models.
+
+    Args:
+        listing (ListingWithImage): The listing information along with the uploaded image.
+        current_user (dict): Dictionary containing current user information.
+
+    Returns:
+        dict: Response containing the listing ID, product ID, image ID, and prediction result.
+    """
     # Build the SQL query for insertion
     sql_insert = f"""
         INSERT INTO fact_listings (listing_id, description, designation, user, productid, imageid)
         SELECT 
             IFNULL(MAX(listing_id), 0) + 1 AS new_listing_id,
-            '{description}' AS description,
-            '{designation}' AS designation,
+            '{listing.description}' AS description,
+            '{listing.designation}' AS designation,
             '{current_user["username"]}' AS username,
             IFNULL(MAX(productid), 0) + 1 AS new_product_id,
             IFNULL(MAX(imageid), 0) + 1 AS new_image_id
@@ -222,10 +254,10 @@ async def listing_submit(
     # Save the uploaded image
     image_path = resolve_path(f"data/images/submitted_images/image_{new_imageid}_product_{new_productid}.jpg")
     with open(image_path, "wb") as image_file:
-        image_file.write(image.file.read())
+        image_file.write(listing.image.file.read())
 
     # Predict using the loaded models
-    pred = predict_from_list_models(mdl_list, designation, image_path)
+    pred = predict_from_list_models(mdl_list, listing.designation, image_path)
 
     # Construct and return the response
     response = {
@@ -237,12 +269,17 @@ async def listing_submit(
     }
     return response
 
-@app.get('/predict_from_listing')
-async def predict_from_listing(listing_id: str):
+
+
+
+
+
+# @app.get('/predict_from_listing')
+# async def predict_from_listing(listing_id: str):
     
-    pred = predict_from_list_models(mdl_list,'Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
+#     pred = predict_from_list_models(mdl_list,'Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
     
-    return pred
+#     return pred
 
 # @app.get('/predict_listing')
 # async def predict_from_listing(listing_id: str):
