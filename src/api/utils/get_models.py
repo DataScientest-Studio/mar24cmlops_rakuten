@@ -7,7 +7,6 @@ from api.utils.s3_utils import (
 from api.utils.resolve_path import resolve_path
 from datetime import datetime
 
-
 def download_model(cfg_path, model_name, version, local_download_path, is_production):
     """
     Download a specific model version from the model repository in S3.
@@ -283,3 +282,8 @@ def upload_model_to_repository(cfg_path, local_model_folder, model_name, is_prod
     upload_folder_to_s3(cfg_path, local_model_folder, s3_folder_prefix)
 
     return s3_folder_prefix
+
+from dotenv import load_dotenv
+load_dotenv(resolve_path('.env/.env.development'))
+aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
+download_model(aws_config_path, 'test_model', 'latest', resolve_path('data/tmp/'), is_production = True)

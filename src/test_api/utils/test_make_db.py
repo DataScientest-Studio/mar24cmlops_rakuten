@@ -204,13 +204,16 @@ def test_upload_db(setup):
     """
     local_path = os.path.join(setup["data_path"], "rakuten_test.duckdb")
     open(local_path, "a").close()  # Create an empty test file
-    upload_db(setup["cfg_path"], local_path)
+    
+    filename = upload_db(setup["cfg_path"], local_path)
+    
     s3_conn = create_s3_conn_from_creds(setup["cfg_path"])
     bucket_name = "rakutenprojectbucket"
-    current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    s3_key = f"db/rakuten_{current_datetime}.duckdb"
+    s3_key = f"db/{filename}"
     response = s3_conn.list_objects_v2(Bucket=bucket_name, Prefix=s3_key)
     assert "Contents" in response
+    
+    s3_conn.delete_objects(Bucket=bucket_name, Delete={"Objects": [{"Key": f"db/{filename}"}]})
 
 
 # Test init_db function

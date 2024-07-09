@@ -140,6 +140,8 @@ def upload_db(cfg_path, local_path):
 
     # Upload the initialization database file with the datetime-based filename
     upload_to_s3(s3_conn, local_path, f"db/{filename}")
+    
+    return filename
 
 
 def init_db(duckdb_path, is_test=False):
