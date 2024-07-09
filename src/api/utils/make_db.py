@@ -22,6 +22,12 @@ def process_listing(listing_csv_path, prdtypecode_csv_path):
     listing_df = pd.read_csv(listing_csv_path, index_col=0)
     prdtypecode_df = pd.read_csv(prdtypecode_csv_path, index_col=0)
 
+    # Remove 'Unnamed: 0' columns if they exist
+    if "Unnamed: 0" in listing_df.columns:
+        listing_df = listing_df.drop(columns=["Unnamed: 0"])
+    if "Unnamed: 0" in prdtypecode_df.columns:
+        prdtypecode_df = prdtypecode_df.drop(columns=["Unnamed: 0"])
+
     listing_df["listing_id"] = listing_df.index
     listing_df = listing_df.join(prdtypecode_df, how="left")
 

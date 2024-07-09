@@ -5,6 +5,7 @@ from api.utils.security import decrypt_file
 from concurrent.futures import ThreadPoolExecutor
 from api.utils.resolve_path import resolve_path
 
+
 def load_aws_cfg(file_path):
     """
     Load AWS credentials and role parameters from a configuration file.
