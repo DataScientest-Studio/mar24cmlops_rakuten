@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -13,10 +13,6 @@ from api.utils.predict import load_models_from_file, predict_from_list_models
 from api.utils.s3_utils import download_from_s3, create_s3_conn_from_creds
 from contextlib import asynccontextmanager
 import json
-
-# Initialize global variables
-conn = None
-mdl_list = []
 
 # Context manager for lifespan events
 @asynccontextmanager
@@ -243,15 +239,20 @@ async def listing_submit(
         dict: Response containing the listing ID, product ID, image ID, and prediction result.
     """
     # Build the SQL query for insertion
+    
+    waiting_datetime = datetime.now()
+    
     sql_insert = f"""
-        INSERT INTO fact_listings (listing_id, description, designation, user, productid, imageid)
+        INSERT INTO fact_listings (listing_id, description, designation, user, productid, imageid, status, waiting_datetime)
         SELECT 
             IFNULL(MAX(listing_id), 0) + 1 AS new_listing_id,
             '{listing.description}' AS description,
             '{listing.designation}' AS designation,
             '{current_user["username"]}' AS username,
             IFNULL(MAX(productid), 0) + 1 AS new_product_id,
-            IFNULL(MAX(imageid), 0) + 1 AS new_image_id
+            IFNULL(MAX(imageid), 0) + 1 AS new_image_id,
+            'waiting' AS status,
+            '{waiting_datetime}' AS waiting_datetime
         FROM fact_listings;
         SELECT MAX(listing_id), MAX(productid), MAX(imageid) FROM fact_listings;
     """
@@ -312,9 +313,9 @@ async def listing_validate(
 
     # Insert into table the user_prdtypecode
     try:
-        conn.execute(
-            f"UPDATE fact_listings SET user_prdtypecode = {validation.user_prdtypecode} WHERE listing_id = {validation.listing_id}"
-        )
+        validate_datetime = datetime.now()
+        
+        conn.execute(f"UPDATE fact_listings SET user_prdtypecode = {validation.user_prdtypecode}, status = 'validate', validate_datetime = '{validate_datetime}' WHERE listing_id = {validation.listing_id}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
 
