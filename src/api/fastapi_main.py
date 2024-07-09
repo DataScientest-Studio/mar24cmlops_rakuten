@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 import jwt
 from api.utils.resolve_path import resolve_path
 from api.utils.predict import load_models_from_file, predict_from_list_models
+from api.utils.s3_utils import download_from_s3, create_s3_conn_from_creds
 from contextlib import asynccontextmanager
 import json
 
 # Initialize global variables
-
 conn = None
 mdl_list = []
 
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
             - conn: DuckDB connection object.
             - mdl_list: List of loaded machine learning models.
     """
-    global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list
+    global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list, s3_conn
 
     # Load environment variables from .env file
     env_path = resolve_path('.env/.env.development')
@@ -64,11 +64,17 @@ async def lifespan(app: FastAPI):
 
     # Load DuckDB connection   
     conn = duckdb.connect(database=duckdb_path, read_only=False)
-
+    
+    # Créer une connexion S3
+    s3_conn = create_s3_conn_from_creds(aws_config_path)
+    
     yield
 
     # Clean up resources
     conn.close()
+    s3_conn.close()
+    
+    # NEED TO ADD DB UPLOAD AFTER
 
 # Initialize FastAPI app
 app = FastAPI(lifespan=lifespan)
@@ -313,36 +319,51 @@ async def listing_validate(
 
     return {"message": f"Listing {validation.listing_id} validated successfully with user_prdtypecode {validation.user_prdtypecode}"}
 
-# @app.get('/predict_from_listing')
-# async def predict_from_listing(listing_id: str):
-    
-#     pred = predict_from_list_models(mdl_list,'Zazie dans le métro est un livre intéressant de Raymond Queneau', resolve_path('data/zazie.jpg'))
-    
-#     return pred
+@app.post("/predict_listing")
+async def predict_listing(
+    listing_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Endpoint to predict and upload image to S3 for a given listing.
 
-# @app.get('/predict_listing')
-# async def predict_from_listing(listing_id: str):
-    
-#     # Here we can ask a prediction from our models for an already existing listing
-    
-#     # Si on soumet une image et texte, alors on predit tranquillement
-    
-#     return predict(model_list, designation, resolve_path(image_path))
+    This function retrieves the productid and imageid based on listing_id, 
+    downloads the corresponding image locally, and uploads it to S3.
 
-# @app.get('/listing_submit')
-# async def predict_from_submission(designation: str, image_path: str):
-    
-#     # Si on propose une annonce, on va chercher l'annonce et on recupere l'image
-#     # puis on prédit
-    
-#     # Si on soumet une image et texte, alors on predit tranquillement
-#     return predict(model_list, designation, resolve_path(image_path))
+    Args:
+        listing_id (int): The ID of the listing to predict and upload.
+        current_user (dict): Dictionary containing current user information.
 
-# @app.get('/listing_validate')
-# async def predict_from_submission(designation: str, image_path: str):
+    Returns:
+        dict: Response containing the message indicating success or failure.
+    """
+    cursor = conn.execute(f"SELECT designation, productid, imageid FROM fact_listings WHERE listing_id = {listing_id}")
+    result = cursor.fetchone()
     
-#     # Si on propose une annonce, on va chercher l'annonce et on recupere l'image
-#     # puis on prédit
+    if not result:
+        raise HTTPException(status_code=404, detail="Listing not found")
     
-#     # Si on soumet une image et texte, alors on predit tranquillement
-#     return predict(model_list, designation, resolve_path(image_path))
+    designation, productid, imageid = result[0], result[1], result[2]
+    image_path = resolve_path(f"data/images/submitted_images/image_{imageid}_product_{productid}.jpg")
+
+    if not os.path.isfile(image_path):
+        try:
+            # Download from S3
+            download_from_s3(s3_conn,
+                            f'image_train/image_{imageid}_product_{productid}.jpg', 
+                            image_path)
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An error occurred while downloading from S3: {e}")
+
+    pred = predict_from_list_models(mdl_list, designation, image_path)
+    
+    # Construct and return the response
+    response = {
+        "message": f"Listing predicted successfully",
+        "listing_id": listing_id,
+        "product_id": productid,
+        "image_id": imageid,
+        "prediction": pred
+    }
+    return response
