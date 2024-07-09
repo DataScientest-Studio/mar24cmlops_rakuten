@@ -30,6 +30,8 @@ from utils.make_db import download_initial_db
 from utils.s3_utils import create_s3_conn_from_creds, download_from_s3
 from concurrent.futures import ThreadPoolExecutor
 from utils.resolve_path import resolve_path
+from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import RandomOverSampler
 
 # Load environment variables from .env file
 load_dotenv('.env/.env.development')
@@ -72,36 +74,29 @@ else :
 with open(os.path.join(prefix,"models/mapper.json"), "r") as json_file:   #
     mapper = json.load(json_file)
     
-def split_train_test(df, samples_per_class=600):
-    grouped_data = df.groupby("prdtypecode")
-    X_train_samples = []
-    X_test_samples = []
-    for _, group in grouped_data:
-        samples = group.sample(n=samples_per_class, random_state=42)
-        X_train_samples.append(samples)
-        remaining_samples = group.drop(samples.index)
-        X_test_samples.append(remaining_samples)
-    X_train = pd.concat(X_train_samples)
-    X_test = pd.concat(X_test_samples)
-    X_train = X_train.sample(frac=1, random_state=42).reset_index(drop=True)
-    X_test = X_test.sample(frac=1, random_state=42).reset_index(drop=True)
-    y_train = X_train["prdtypecode"]
-    X_train = X_train.drop(["prdtypecode"], axis=1)
-    y_test = X_test["prdtypecode"]
-    X_test = X_test.drop(["prdtypecode"], axis=1)
-    val_samples_per_class = 50
-    grouped_data_test = pd.concat([X_test, y_test], axis=1).groupby("prdtypecode")
-    X_val_samples = []
-    y_val_samples = []
-    for _, group in grouped_data_test:
-        samples = group.sample(n=val_samples_per_class, random_state=42)
-        X_val_samples.append(samples[["description", "image_path"]])
-        y_val_samples.append(samples["prdtypecode"])
-    X_val = pd.concat(X_val_samples)
-    y_val = pd.concat(y_val_samples)
-    X_val = X_val.sample(frac=1, random_state=42).reset_index(drop=True)
-    y_val = y_val.sample(frac=1, random_state=42).reset_index(drop=True)
-    return X_train, X_val, X_test, y_train, y_val, y_test
+def split_train_test(df,train_ratio=5/7.,test_ratio=1/7.,test_val=1/7.,limit_train=27*600,limit_test=27*50,limit_val=27*50):
+    """
+    Split the DataFrame following the various provided ratios and truncated if necessary to limit the following train time
+    Args:
+        df (_type_): _description_
+        train_ratio (_type_, optional): _description_. Defaults to 5/7..
+        test_ratio (_type_, optional): _description_. Defaults to 1/7..
+        test_val (_type_, optional): _description_. Defaults to 1/7..
+        limit_train (_type_, optional): _description_. Defaults to 27*600.
+        limit_test (_type_, optional): _description_. Defaults to 27*50.
+        limit_val (_type_, optional): _description_. Defaults to 27*50.
+
+    Returns:
+        X_train,X_val,X_test,y_train,y_val,y_test
+    """
+    X=df.drop(['prdtypecode'],axis=1)
+    y=df['prdtypecode']
+    X_train1_init,X_test1,y_train1_init,y_test1=train_test_split(X,y,test_size=test_ratio,random_state=42,stratify=y)    
+    X_train1,X_val1,y_train1,y_val1=train_test_split(X_train1_init,y_train1_init,test_size=test_ratio/(train_ratio+test_ratio),random_state=42,stratify=y_train1_init)
+    X_train,y_train=RandomOverSampler().fit_resample(X_train1,y_train1)
+    X_test,y_test=RandomOverSampler().fit_resample(X_test1,y_test1)
+    X_val,y_val=RandomOverSampler().fit_resample(X_val1,y_val1)
+    return X_train[:limit_train],X_val[:limit_val],X_test[:limit_test],y_train[:limit_train],y_val[:limit_val],y_test[:limit_test]
 
 def preprocess_text(text):
     # Supprimer les caractères non alphabétiques
@@ -123,7 +118,11 @@ class TextLSTMModel:
         self.tokenizer = Tokenizer(num_words=max_words, oov_token="<OOV>")
         self.model = None
 
-    def preprocess_and_fit(self, X_train, y_train, X_val, y_val,date_path):
+    def preprocess_and_fit(self, X_train, y_train, X_val, y_val,date_path,is_Production=False,epochs=1):
+        ##############
+        print('coucou') ############################
+        print(X_train["description"][:5]) ##########################
+        ##############
         self.tokenizer.fit_on_texts(X_train["description"])
 
         tokenizer_config = self.tokenizer.to_json()
@@ -155,13 +154,16 @@ class TextLSTMModel:
 
         self.model = Model(inputs=[text_input], outputs=output)
 
+        if is_Production is True:
+            self.model=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.keras")) 
+
         self.model.compile(
             optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
         )
 
         lstm_callbacks = [
             ModelCheckpoint(
-                filepath=resolve_path("models/staging_models/{date_path}/best_lstm_model.keras"), save_best_only=True
+                filepath=resolve_path(f"models/staging_models/{date_path}/best_lstm_model.keras"), save_best_only=True
             ),  # Enregistre le meilleur modèle
             EarlyStopping(
                 patience=3, restore_best_weights=True
@@ -172,7 +174,7 @@ class TextLSTMModel:
         self.model.fit(
             [train_padded_sequences],
             tf.keras.utils.to_categorical(y_train, num_classes=27),
-            epochs=10,
+            epochs=epochs,
             batch_size=32,
             validation_data=(
                 [val_padded_sequences],
@@ -185,7 +187,7 @@ class ImageVGG16Model:
     def __init__(self):
         self.model = None
 
-    def preprocess_and_fit(self, X_train, y_train, X_val, y_val,date_path):
+    def preprocess_and_fit(self, X_train, y_train, X_val, y_val,date_path,is_Production=False,epochs=1):
         # Paramètres
         batch_size = 32
         num_classes = 27
@@ -235,13 +237,16 @@ class ImageVGG16Model:
         for layer in vgg16_base.layers:
             layer.trainable = False
 
+        if is_Production is True:
+            self.model=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.keras"))
+
         self.model.compile(
             optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
         )
 
         vgg_callbacks = [
             ModelCheckpoint(
-                filepath=resolve_path("models/staging_models/{date_path}/best_vgg16_model.keras"), save_best_only=True
+                filepath=resolve_path(f"models/staging_models/{date_path}/best_vgg16_model.keras"), save_best_only=True
             ),  # Enregistre le meilleur modèle
             EarlyStopping(
                 patience=3, restore_best_weights=True
@@ -251,7 +256,7 @@ class ImageVGG16Model:
 
         self.model.fit(
             train_generator,
-            epochs=10,
+            epochs=epochs,              ############# le temps de l'évaluation
             validation_data=val_generator,
             callbacks=vgg_callbacks,
         )
@@ -282,7 +287,7 @@ class concatenate:
         # Boucle à travers chaque classe
         for class_label in range(num_classes):
             # Indices des échantillons appartenant à la classe actuelle
-            indices = np.where(y_train == class_label)[0]
+            indices = np.where(y_train == str(class_label))[0]
 
             # Sous-échantillonnage aléatoire pour sélectionner 'new_samples_per_class' échantillons
             sampled_indices = resample(
@@ -295,7 +300,10 @@ class concatenate:
 
         # Réinitialiser les index des DataFrames
         new_X_train = new_X_train.reset_index(drop=True)
-        new_y_train = new_y_train.reset_index(drop=True)
+        print(new_X_train.head(5))
+        new_y_train = new_y_train.reset_index(drop=True)[['prdtypecode']]
+        
+        print(new_y_train.head(5))
         new_y_train = new_y_train.values.reshape(1350).astype("int")
 
         # Charger les modèles préalablement sauvegardés
@@ -309,15 +317,9 @@ class concatenate:
         )
 
         # Paramètres pour le prétraitement des images
-        target_size = (
-            224,
-            224,
-            3,
-        )  # Taille cible pour le modèle VGG16, ajustez selon vos besoins
+        target_size = (224,224,3) 
 
-        images_train = new_X_train["image_path"].apply(
-            lambda x: self.preprocess_image(x, target_size)
-        )
+        images_train = new_X_train["image_path"].apply(lambda x: self.preprocess_image(x, target_size))
 
         images_train = tf.convert_to_tensor(images_train.tolist(), dtype=tf.float32)
 
@@ -347,80 +349,85 @@ class concatenate:
 
         return best_weights
 
+def detection_sousdossier(image_path):
+    for i in ['image_train','temporary_image','image_test']:
+        if os.path.isfile(f"data/preprocessed/{i}/{os.path.basename(image_path)}"):
+            return f"data/preprocessed/{i}/{os.path.basename(image_path)}"
 
-def retrain(is_production=False,db_limitation=False):
-    image_vgg16_model,text_lstm_model=None,None
-    if is_production is True:
-        image_vgg16_model=keras.models.load_model(os.path.join(prefix,"models/production_model/best_vgg16_model.keras"))  #
-        text_lstm_model=keras.models.load_model(os.path.join(prefix,"models/production_model/best_lstm_model.keras"))    #
-    else:
-        image_vgg16_model=ImageVGG16Model()
-        text_lstm_model=TextLSTMModel()
+
+def retrain(is_Production=False,db_limitation=False,init=False,epochs=1):
+    image_vgg16_model=ImageVGG16Model()
+    text_lstm_model=TextLSTMModel()
     
-    date_stage=datetime.now().strftime('%Y%m%d')
-    #db_conn = duckdb.connect(database=duckdb_path, read_only=False)
+    date_stage=datetime.now().strftime('%Y%m%d_%H-%M-%S')
+    print(date_stage)
+    if not os.path.isdir(f"models/staging_models/{date_stage}/"):
+        os.mkdir(f"models/staging_models/{date_stage}/")
+                #db_conn = duckdb.connect(database=duckdb_path, read_only=False)
     liste_valeur=None
-    if db_limitation is True:
-        liste_valeur=db_conn.sql('SELECT designation,description,imageid,productid,user_prdtypecode AS prdtypecode FROM fact_listings WHERE user IS NOT NULL AND NOT user=init_user AND user_prdtypecode IS NOT NULL;').df()
-    else:
-        liste_valeur=db_conn.sql('SELECT designation,description,imageid,productid,user_prdtypecode AS prdtypecode FROM fact_listings WHERE user IS NOT NULL AND user_prdtypecode IS NOT NULL;').df()
-    
-    #print(liste_valeur.info())
-    #return
-    #liste_colonne = [i[0] for i in db_conn.sql('show table fact_listings;').fetchall()]
-    # attention à la requête précédente : IS NOT NULL peut poser problème et comment se fait la portée de AND ?
-    #df=pd.DataFrame(liste_valeur,columns=liste_colonne)
-    #print(liste_valeur.info())
-    #print(db_conn.sql('show table fact_listings;').df().head(10))
-    #print(liste_valeur[['prdtypecode']].astype(int).head(10))
-    #print(liste_valeur.head(5))
-    #return
+    if init is False:
+        if db_limitation is True:
+            liste_valeur=db_conn.sql("SELECT designation,description,imageid,productid,user_prdtypecode AS prdtypecode FROM fact_listings WHERE user IS NOT NULL AND NOT user='init_user' AND user_prdtypecode IS NOT NULL;").df()
+        else:
+            liste_valeur=db_conn.sql('SELECT designation,description,imageid,productid,user_prdtypecode AS prdtypecode FROM fact_listings WHERE user IS NOT NULL AND user_prdtypecode IS NOT NULL;').df()
+    else :
+        liste_valeur=db_conn.sql("SELECT designation,description,imageid,productid,user_prdtypecode AS prdtypecode FROM fact_listings WHERE user='init_user';").df() 
+
     mapper_inv={mapper[i]:i for i in mapper.keys()}
     liste_valeur['prdtypecode']=liste_valeur['prdtypecode'].astype(str)
     liste_valeur['prdtypecode']=liste_valeur['prdtypecode'].replace(mapper_inv)
     liste_valeur['description']=liste_valeur['designation']+str(liste_valeur['description'])
     liste_valeur.drop(['designation'],axis=1,inplace=True)
-    #print(liste_valeur.info())
-    #print(liste_valeur.head(5))
-    #print(mapper)
-    #return
-    #liste_valeur.drop(['model_prdtypecode'],axis=1)
     filepath='image_train'
-    liste_valeur["image_path"] = (f"{filepath}/image_{liste_valeur.imageid.astype(str)}_product_{liste_valeur.productid.astype(str)}.jpg")
+    liste_valeur["image_path"] = liste_valeur.apply(lambda row : f"{filepath}/image_{row['imageid']}_product_{row['productid']}.jpg",axis=1)
     liste_valeur['description']=liste_valeur['description'].apply(preprocess_text)
-    #print(liste_valeur.info())
-    #print(liste_valeur[['prdtypecode']].head(5))
-    #return
+    #print(liste_valeur['description'][:10]) ########################
+    liste_valeur['image_path']=liste_valeur['image_path'].apply(lambda x : detection_sousdossier(x))
+    liste_valeur.dropna(axis=0,subset=['image_path'],how='any',inplace=True)
     X_train, X_val, X_test, y_train, y_val, y_test = split_train_test(liste_valeur)
-    #print(X_train.info())
-    #print(y_train.info())
-    #print(X_test.head(10))
-    #print(y_test)
-    #return
-    if not os.path.isDir(resolve_path('data/temporary_images')):
-        os.mkdir(resolve_path('data/temporary_images'))
+    if not os.path.isdir(resolve_path('data/preprocessed/temporary_images')):
+        os.mkdir(resolve_path('data/preprocessed/temporary_images'))
     
+    liste_local_image=[]
+    for _,a,file_name in os.walk(resolve_path('data/preprocessed')):
+        liste_local_image=liste_local_image+file_name
     client = create_s3_conn_from_creds(resolve_path(os.getenv('AWS_CONFIG_PATH')))
-    liste_s3_image=list(pd.concat([X_train['image_path'],X_val['image_path'],X_test['image_path']])['image_path'])
-    liste_local_image=[os.path.join(resolve_path('data/temporary'),os.path.basename(i))  for i in liste_s3_image]
-    with ThreadPoolExecutor() as executor:
-        executor.map(lambda bucket_x_local: client.download_to_s3("rakutenprojectbucket",bucket_x_local[0],bucket_x_local[1]), zip(liste_s3_image,liste_local_image))
-    
+    liste_image=list(X_train['image_path'])+list(X_test['image_path'])+list(X_val['image_path'])
+            #liste_s3_image=[i for i in liste_image if os.path.basename(i) not in liste_local_image]
+                #liste_s3_image=[os.path.basename(i) for i in liste_local_image]
+                #print(liste_s3_image)
+                #return
+                #liste_local_image=[os.path.join(resolve_path('data/temporary'),os.path.basename(i))  for i in liste_s3_image]
+                #liste_local_image1=[os.path.join('data/preprocessed/temporary_images',os.path.basename(i)) for i in liste_s3_image]
+            #with ThreadPoolExecutor() as executor:
+            #    executor.map(lambda bucket_x_local: download_from_s3(client,bucket_x_local[0],bucket_x_local[1]), zip(liste_s3_image,liste_local_image1))
+            #for i in liste_s3_image:    
+            #    download_from_s3(client,i,os.path.join('data/preprocessed/temporary_images',os.path.basename(i)))
+                #    print(i)
+                
+                #return
     # Train LSTM model
+    print("X_train: ", X_train.shape)
+    print("y_train: ", y_train.shape)
+    print("X_test: ", X_test.shape)
+    print("y_test: ", y_test.shape)
+    print("X_val: ", X_val.shape)
+    print("y_val: ", y_val.shape)
+    print(np.unique(y_train))
     print("Training LSTM Model")
-    text_lstm_model.preprocess_and_fit(X_train, y_train, X_val, y_val)
+    text_lstm_model.preprocess_and_fit(X_train, y_train, X_val, y_val,date_stage,is_Production,epochs)
     print("Finished training LSTM")
-
+    #return
     print("Training VGG")
     # Train VGG16 model
-    image_vgg16_model.preprocess_and_fit(X_train, y_train, X_val, y_val)
+    image_vgg16_model.preprocess_and_fit(X_train, y_train, X_val, y_val,date_stage,is_Production,epochs)
     print("Finished training VGG")
-
-    with open(resolve_path(f"models/staging_models/{date_stage}/tokenizer_config.json", "r", encoding="utf-8")) as json_file:
+    #return
+    with open(resolve_path(f"models/staging_models/{date_stage}/tokenizer_config.json"), "r", encoding="utf-8") as json_file:
         tokenizer_config = json_file.read()
     tokenizer = tf.keras.preprocessing.text.tokenizer_from_json(tokenizer_config)
-    lstm = keras.models.load_model(resolve_path("models/staging_models/{date_stage}/best_lstm_model.keras"))
-    vgg16 = keras.models.load_model(resolve_path("models/staging_models/{date_stage}/best_vgg16_model.keras"))
+    lstm = keras.models.load_model(resolve_path(f"models/staging_models/{date_stage}/best_lstm_model.keras"))
+    vgg16 = keras.models.load_model(resolve_path(f"models/staging_models/{date_stage}/best_vgg16_model.keras"))
 
     print("Training the concatenate model")
     model_concatenate = concatenate(tokenizer, lstm, vgg16)
@@ -428,7 +435,7 @@ def retrain(is_production=False,db_limitation=False):
     best_weights = model_concatenate.optimize(lstm_proba, vgg16_proba, new_y_train)
     print("Finished training concatenate model")
 
-    with open(resolve_path(f"models/staging_models/{date_stage}/best_weights.pkl", "wb")) as file:
+    with open(resolve_path(f"models/staging_models/{date_stage}/best_weights.pkl"), "wb") as file:
         pickle.dump(best_weights, file)
 
     num_classes = 27
@@ -445,7 +452,17 @@ def retrain(is_production=False,db_limitation=False):
     )
 
     # Enregistrer le modèle au format h5
-    concatenate_model.save(resolve_path("models/staging_models/{date_stage}/concatenate.keras"))
+    concatenate_model.save(resolve_path(f"models/staging_models/{date_stage}/concatenate.keras"))
+    
+    # Recording of X_test, y_test for future comparison
+    final_test=X_test
+    final_test['prdtypecode']=y_test
+    final_test.to_csv(resolve_path(f"models/staging_models/{date_stage}/final_test.csv"))
 
 if __name__ == '__main__':
-    retrain(is_production=False, db_limitation=False)
+    #retrain(is_Production=False, db_limitation=False)
+    #retrain(is_Production=True, db_limitation=False)
+    #retrain(is_Production=False, db_limitation=True)
+    #retrain(is_Production=True, db_limitation=True)
+    #retrain(is_Production=False, db_limitation=False,init=True)
+    retrain(is_Production=False, db_limitation=False,init=True,epochs=2)
