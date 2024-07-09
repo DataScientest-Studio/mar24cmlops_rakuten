@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 import duckdb
 import os
-from api.utils.make_db import download_initial_db, upload_db
+from api.utils.make_db import download_initial_db
 from api.utils.security import create_access_token, verify_password
 from dotenv import load_dotenv
 import jwt
@@ -14,6 +14,7 @@ from api.utils.predict import load_models_from_file, predict_from_list_models
 from api.utils.s3_utils import download_from_s3, create_s3_conn_from_creds
 from contextlib import asynccontextmanager
 import json
+
 
 # Context manager for lifespan events
 @asynccontextmanager
@@ -42,56 +43,67 @@ async def lifespan(app: FastAPI):
     global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list, s3_conn
 
     # Load environment variables from .env file
-    env_path = resolve_path('.env/.env.development')
+    env_path = resolve_path(".env/.env.development")
     load_dotenv(env_path)
 
     # Convert paths to absolute paths
-    aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
-    duckdb_path = os.path.join(resolve_path(os.environ['DATA_PATH']), os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
-    encrypted_file_path = os.path.join(resolve_path(os.environ['AWS_CONFIG_FOLDER']), '.encrypted')
-    
+    aws_config_path = resolve_path(os.environ["AWS_CONFIG_PATH"])
+    duckdb_path = os.path.join(
+        resolve_path(os.environ["DATA_PATH"]), os.environ["RAKUTEN_DB_NAME"].lstrip("/")
+    )
+    encrypted_file_path = os.path.join(
+        resolve_path(os.environ["AWS_CONFIG_FOLDER"]), ".encrypted"
+    )
+
     # Verify and download models if necessary
-    verify_and_download_models(aws_config_path, resolve_path('models/model_list.txt'))
-    
+    verify_and_download_models(aws_config_path, resolve_path("models/model_list.txt"))
+
     # Load model list
-    mdl_list = load_models_from_file(aws_config_path, resolve_path('models/model_list.txt'))
+    mdl_list = load_models_from_file(
+        aws_config_path, resolve_path("models/model_list.txt")
+    )
 
     # Check if the DuckDB database file exists locally, if not, download it from S3
     if not os.path.isfile(duckdb_path):
-        print('No Database Found locally')
+        print("No Database Found locally")
         download_initial_db(aws_config_path, duckdb_path)
-        print('Database Successfully Downloaded')
+        print("Database Successfully Downloaded")
 
-    # Load DuckDB connection   
+    # Load DuckDB connection
     conn = duckdb.connect(database=duckdb_path, read_only=False)
-    
+
     # Créer une connexion S3
     s3_conn = create_s3_conn_from_creds(aws_config_path)
-    
+
     yield
 
     # Clean up resources
     conn.close()
     s3_conn.close()
-    
+
     # upload_db
-    #upload_db(aws_config_path, duckdb_path)
+    # upload_db(aws_config_path, duckdb_path)
+
 
 # Initialize FastAPI app
 app = FastAPI(lifespan=lifespan)
+
 
 # Model for listing
 class Listing(BaseModel):
     description: str
     designation: str
-    
+
+
 class ListingWithImage(Listing):
     image: UploadFile = File(...)
-    
+
+
 class ValidateListing(BaseModel):
     listing_id: int
     user_prdtypecode: int
-    
+
+
 # Auth User function
 def authenticate_user(username: str, password: str):
     """
@@ -104,20 +116,25 @@ def authenticate_user(username: str, password: str):
     Returns:
         bool: True if the user is authenticated, False otherwise.
     """
-    cursor = conn.execute(f"SELECT hashed_password FROM dim_user WHERE username = '{username}'")
+    cursor = conn.execute(
+        f"SELECT hashed_password FROM dim_user WHERE username = '{username}'"
+    )
     result = cursor.fetchone()
     if not result:
         return False
-    
+
     hashed_password = result[0]
     return verify_password(password, hashed_password)
+
 
 # Define OAuth2 password bearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-@app.get('/')
+
+@app.get("/")
 def get_index():
-    return {'data': 'hello world'}
+    return {"data": "hello world"}
+
 
 # Endpoint to authenticate and get token
 @app.post("/token")
@@ -139,11 +156,14 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=int(os.environ['ACCESS_TOKEN_EXPIRE_MINUTES']))
+    access_token_expires = timedelta(
+        minutes=int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"])
+    )
     access_token = create_access_token(
         data={"sub": username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 # Dependency function to get current user from token
 async def get_current_user(token: str = Depends(oauth2_scheme)):
@@ -162,7 +182,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, os.environ['JWT_KEY'], algorithms=[os.environ['ALGORITHM']])
+        payload = jwt.decode(
+            token, os.environ["JWT_KEY"], algorithms=[os.environ["ALGORITHM"]]
+        )
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -170,6 +192,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except jwt.JWTError:
         raise credentials_exception
     return token_data
+
 
 # Read listing endpoint
 @app.get("/read_listing/{listing_id}")
@@ -185,23 +208,37 @@ async def read_listing(listing_id: int, current_user: dict = Depends(get_current
         dict: Dictionary containing listing description.
     """
     # Dummy logic to retrieve listing description based on listing_id
-    cols = ["designation", "description", 'productid', 'imageid',
-            "user_prdtypecode", "model_prdtypecode", 
-            "waiting_datetime","validate_datetime",
-            "status","user","imageid"]
+    cols = [
+        "designation",
+        "description",
+        "productid",
+        "imageid",
+        "user_prdtypecode",
+        "model_prdtypecode",
+        "waiting_datetime",
+        "validate_datetime",
+        "status",
+        "user",
+        "imageid",
+    ]
     columns_str = ", ".join(cols)
-    cursor = conn.execute(f"SELECT {columns_str} FROM fact_listings WHERE listing_id = {listing_id}")
+    cursor = conn.execute(
+        f"SELECT {columns_str} FROM fact_listings WHERE listing_id = {listing_id}"
+    )
     result = cursor.fetchone()
     if not result:
         raise HTTPException(status_code=404, detail="Listing not found")
-    
-    response = dict(zip(cols,result))
-    
+
+    response = dict(zip(cols, result))
+
     return response
+
 
 # Delete listing endpoint
 @app.delete("/delete_listing/{listing_id}")
-async def delete_listing(listing_id: int, current_user: dict = Depends(get_current_user)):
+async def delete_listing(
+    listing_id: int, current_user: dict = Depends(get_current_user)
+):
     """
     Endpoint to delete a listing.
 
@@ -213,12 +250,16 @@ async def delete_listing(listing_id: int, current_user: dict = Depends(get_curre
         dict: Message indicating success or failure.
     """
     # Logic to check if user has permission to delete listing
-    cursor = conn.execute(f"SELECT user FROM fact_listings WHERE listing_id = {listing_id}")
+    cursor = conn.execute(
+        f"SELECT user FROM fact_listings WHERE listing_id = {listing_id}"
+    )
     result = cursor.fetchone()
     if not result:
         raise HTTPException(status_code=404, detail="Listing not found")
     if result[0] != current_user["username"]:
-        raise HTTPException(status_code=403, detail="This user is not the owner of this listing_id")
+        raise HTTPException(
+            status_code=403, detail="This user is not the owner of this listing_id"
+        )
     # Logic to delete listing
     conn.execute(f"DELETE FROM fact_listings WHERE listing_id = {listing_id}")
     return {"message": "Listing deleted successfully"}
@@ -227,7 +268,7 @@ async def delete_listing(listing_id: int, current_user: dict = Depends(get_curre
 @app.post("/listing_submit")
 async def listing_submit(
     listing: ListingWithImage = Depends(),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Endpoint to submit a new listing along with an image.
@@ -243,9 +284,9 @@ async def listing_submit(
         dict: Response containing the listing ID, product ID, image ID, and prediction result.
     """
     # Build the SQL query for insertion
-    
+
     waiting_datetime = datetime.now()
-    
+
     sql_insert = f"""
         INSERT INTO fact_listings (listing_id, description, designation, user, productid, imageid, status, waiting_datetime)
         SELECT 
@@ -267,9 +308,11 @@ async def listing_submit(
     new_listing_id = result[0]
     new_productid = result[1]
     new_imageid = result[2]
-    
+
     # Save the uploaded image
-    image_path = resolve_path(f"data/images/submitted_images/image_{new_imageid}_product_{new_productid}.jpg")
+    image_path = resolve_path(
+        f"data/images/submitted_images/image_{new_imageid}_product_{new_productid}.jpg"
+    )
     with open(image_path, "wb") as image_file:
         image_file.write(listing.image.file.read())
 
@@ -277,25 +320,26 @@ async def listing_submit(
     pred = predict_from_list_models(mdl_list, listing.designation, image_path)
     # Convert prediction dictionary to a JSON string
     pred_json = json.dumps(pred)
-    
+
     # Inserting modele pred into table
     sql_prediction_insert = f"UPDATE fact_listings SET model_prdtypecode = {pred_json} WHERE listing_id = {new_listing_id}"
     conn.execute(sql_prediction_insert)
 
     # Construct and return the response
     response = {
-        "message": f"Listing added successfully",
+        "message": "Listing added successfully",
         "listing_id": new_listing_id,
         "product_id": new_productid,
         "image_id": new_imageid,
-        "prediction": pred
+        "prediction": pred,
     }
     return response
+
 
 @app.post("/listing_validate")
 async def listing_validate(
     validation: ValidateListing = Depends(),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Endpoint to validate a listing by inserting user_prdtypecode.
@@ -308,32 +352,40 @@ async def listing_validate(
         dict: Message indicating success or failure.
     """
     # Check if user has permission to validate listing
-    cursor = conn.execute(f"SELECT user FROM fact_listings WHERE listing_id = {validation.listing_id}")
+    cursor = conn.execute(
+        f"SELECT user FROM fact_listings WHERE listing_id = {validation.listing_id}"
+    )
     result = cursor.fetchone()
     if not result:
         raise HTTPException(status_code=404, detail="Listing not found")
     if result[0] != current_user["username"]:
-        raise HTTPException(status_code=403, detail="This user is not the owner of this listing_id")
+        raise HTTPException(
+            status_code=403, detail="This user is not the owner of this listing_id"
+        )
 
     # Insert into table the user_prdtypecode
     try:
         validate_datetime = datetime.now()
-        
-        conn.execute(f"UPDATE fact_listings SET user_prdtypecode = {validation.user_prdtypecode}, status = 'validate', validate_datetime = '{validate_datetime}' WHERE listing_id = {validation.listing_id}")
+
+        conn.execute(
+            f"UPDATE fact_listings SET user_prdtypecode = {validation.user_prdtypecode}, status = 'validate', validate_datetime = '{validate_datetime}' WHERE listing_id = {validation.listing_id}"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
 
-    return {"message": f"Listing {validation.listing_id} validated successfully with user_prdtypecode {validation.user_prdtypecode}"}
+    return {
+        "message": f"Listing {validation.listing_id} validated successfully with user_prdtypecode {validation.user_prdtypecode}"
+    }
+
 
 @app.post("/predict_listing")
 async def predict_listing(
-    listing_id: int,
-    current_user: dict = Depends(get_current_user)
+    listing_id: int, current_user: dict = Depends(get_current_user)
 ):
     """
     Endpoint to predict and upload image to S3 for a given listing.
 
-    This function retrieves the productid and imageid based on listing_id, 
+    This function retrieves the productid and imageid based on listing_id,
     downloads the corresponding image locally, and uploads it to S3.
 
     Args:
@@ -343,33 +395,42 @@ async def predict_listing(
     Returns:
         dict: Response containing the message indicating success or failure.
     """
-    cursor = conn.execute(f"SELECT designation, productid, imageid FROM fact_listings WHERE listing_id = {listing_id}")
+    cursor = conn.execute(
+        f"SELECT designation, productid, imageid FROM fact_listings WHERE listing_id = {listing_id}"
+    )
     result = cursor.fetchone()
-    
+
     if not result:
         raise HTTPException(status_code=404, detail="Listing not found")
-    
+
     designation, productid, imageid = result[0], result[1], result[2]
-    image_path = resolve_path(f"data/images/submitted_images/image_{imageid}_product_{productid}.jpg")
+    image_path = resolve_path(
+        f"data/images/submitted_images/image_{imageid}_product_{productid}.jpg"
+    )
 
     if not os.path.isfile(image_path):
         try:
             # Download from S3
-            download_from_s3(s3_conn,
-                            f'image_train/image_{imageid}_product_{productid}.jpg', 
-                            image_path)
+            download_from_s3(
+                s3_conn,
+                f"image_train/image_{imageid}_product_{productid}.jpg",
+                image_path,
+            )
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"An error occurred while downloading from S3: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"An error occurred while downloading from S3: {e}",
+            )
 
     pred = predict_from_list_models(mdl_list, designation, image_path)
-    
+
     # Construct and return the response
     response = {
-        "message": f"Listing predicted successfully",
+        "message": "Listing predicted successfully",
         "listing_id": listing_id,
         "product_id": productid,
         "image_id": imageid,
-        "prediction": pred
+        "prediction": pred,
     }
     return response

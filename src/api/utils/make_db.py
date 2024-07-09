@@ -5,8 +5,8 @@ from datetime import datetime
 import numpy as np
 import os
 from passlib.hash import bcrypt
-from dotenv import load_dotenv
 from api.utils.resolve_path import resolve_path
+
 
 def process_listing(listing_csv_path, prdtypecode_csv_path):
     """
@@ -19,20 +19,21 @@ def process_listing(listing_csv_path, prdtypecode_csv_path):
     Returns:
     - listing_df (pd.DataFrame): Processed DataFrame containing listings data.
     """
-    listing_df = pd.read_csv(listing_csv_path, index_col= 0)
-    prdtypecode_df = pd.read_csv(prdtypecode_csv_path, index_col= 0)
-    
-    listing_df['listing_id'] = listing_df.index
-    listing_df = listing_df.join(prdtypecode_df, how='left')
-    
-    listing_df['waiting_datetime'] = datetime.now()
-    listing_df['validate_datetime'] = datetime.now()
-    listing_df['status'] = 'validate'
-    listing_df['user'] = 'init_user'
-    listing_df = listing_df.rename(columns={'prdtypecode': 'user_prdtypecode'})
-    listing_df['model_prdtypecode'] = np.nan
-    
-    return(listing_df)
+    listing_df = pd.read_csv(listing_csv_path, index_col=0)
+    prdtypecode_df = pd.read_csv(prdtypecode_csv_path, index_col=0)
+
+    listing_df["listing_id"] = listing_df.index
+    listing_df = listing_df.join(prdtypecode_df, how="left")
+
+    listing_df["waiting_datetime"] = datetime.now()
+    listing_df["validate_datetime"] = datetime.now()
+    listing_df["status"] = "validate"
+    listing_df["user"] = "init_user"
+    listing_df = listing_df.rename(columns={"prdtypecode": "user_prdtypecode"})
+    listing_df["model_prdtypecode"] = np.nan
+
+    return listing_df
+
 
 def init_user_table():
     """
@@ -42,22 +43,37 @@ def init_user_table():
     - user_df (pd.DataFrame): DataFrame containing user data.
     """
     user_data = {
-        'username': ['jc', 'fred', 'wilfried', 'init_user','test_user','test_admin'],
-        'first_name': ['jc', 'fred', 'wilfried', 'init_user','test_user','test_admin'],
-        'access_rights': ['administrator', 'administrator', 'administrator', 'user','user','administrator'],
-        'hashed_password': []
+        "username": ["jc", "fred", "wilfried", "init_user", "test_user", "test_admin"],
+        "first_name": [
+            "jc",
+            "fred",
+            "wilfried",
+            "init_user",
+            "test_user",
+            "test_admin",
+        ],
+        "access_rights": [
+            "administrator",
+            "administrator",
+            "administrator",
+            "user",
+            "user",
+            "administrator",
+        ],
+        "hashed_password": [],
     }
 
     # Hasher les mots de passe
-    passwords = ['jc', 'fred', 'wilfried', 'init_user', 'test_user', 'test_admin']
+    passwords = ["jc", "fred", "wilfried", "init_user", "test_user", "test_admin"]
     hashed_passwords = [bcrypt.hash(password) for password in passwords]
 
-    user_data['hashed_password'] = hashed_passwords
+    user_data["hashed_password"] = hashed_passwords
 
     user_df = pd.DataFrame(user_data)
     return user_df
-    
-def create_table_from_pd_into_duckdb(duckdb_connection,pd_df, table_name):
+
+
+def create_table_from_pd_into_duckdb(duckdb_connection, pd_df, table_name):
     """
     Loads a CSV file into a DuckDB database.
 
@@ -71,6 +87,7 @@ def create_table_from_pd_into_duckdb(duckdb_connection,pd_df, table_name):
     """
     duckdb_connection.execute(f"CREATE TABLE {table_name} AS SELECT * FROM pd_df")
 
+
 def save_duckdb_to_parquet(duckdb_conn, db_file_path):
     """
     Saves the DuckDB database to a parquetfile.
@@ -78,11 +95,12 @@ def save_duckdb_to_parquet(duckdb_conn, db_file_path):
     Args:
     - duckdb_conn: The DuckDB connection.
     - db_file_path (str): The path where the database will be saved.
-    
+
     Returns:
         None
     """
     duckdb_conn.execute(f"EXPORT DATABASE '{db_file_path}' (FORMAT 'PARQUET')")
+
 
 def download_initial_db(cfg_path, local_path):
     """
@@ -94,9 +112,10 @@ def download_initial_db(cfg_path, local_path):
     """
     # Create an S3 connection
     s3_conn = create_s3_conn_from_creds(cfg_path)
-    
+
     # Download the initialization database file
-    download_from_s3(s3_conn, 'db/rakuten_init.duckdb', local_path)
+    download_from_s3(s3_conn, "db/rakuten_init.duckdb", local_path)
+
 
 def upload_db(cfg_path, local_path):
     """
@@ -108,48 +127,49 @@ def upload_db(cfg_path, local_path):
     """
     # Create an S3 connection
     s3_conn = create_s3_conn_from_creds(cfg_path)
-    
+
     # Create a filename with datetime-based archiving
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f'rakuten_{current_datetime}.duckdb'
-    
-    # Upload the initialization database file with the datetime-based filename
-    upload_to_s3(s3_conn, local_path, f'db/{filename}')
+    filename = f"rakuten_{current_datetime}.duckdb"
 
-def init_db(duckdb_path, is_test = False):
+    # Upload the initialization database file with the datetime-based filename
+    upload_to_s3(s3_conn, local_path, f"db/{filename}")
+
+
+def init_db(duckdb_path, is_test=False):
     """
-    Initialize the DuckDB database and save it in duckdb_path (str). 
+    Initialize the DuckDB database and save it in duckdb_path (str).
     If is_test argument = True, then will only create fact_listings but with the first 100 listings only
     Returns:
         None
     """
-    cfg_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
-    data_path = resolve_path(os.environ['DATA_PATH'])
-    init_listing_csv_path = os.path.join(data_path,'X_train.csv')
-    init_prdtypecode_csv_path = os.path.join(data_path,'Y_train.csv')
-    init_dim_prdtypecode_csv_path = os.path.join(data_path,'dim_prdtypecode.csv')
-    
+    cfg_path = resolve_path(os.environ["AWS_CONFIG_PATH"])
+    data_path = resolve_path(os.environ["DATA_PATH"])
+    init_listing_csv_path = os.path.join(data_path, "X_train.csv")
+    init_prdtypecode_csv_path = os.path.join(data_path, "Y_train.csv")
+    init_dim_prdtypecode_csv_path = os.path.join(data_path, "dim_prdtypecode.csv")
+
     # Download initial data from S3
     s3_conn = create_s3_conn_from_creds(cfg_path)
-    download_from_s3(s3_conn,'X_train.csv', init_listing_csv_path)
-    download_from_s3(s3_conn,'Y_train.csv', init_prdtypecode_csv_path)
-    download_from_s3(s3_conn,'dim_prdtypecode.csv', init_dim_prdtypecode_csv_path)
-    
+    download_from_s3(s3_conn, "X_train.csv", init_listing_csv_path)
+    download_from_s3(s3_conn, "Y_train.csv", init_prdtypecode_csv_path)
+    download_from_s3(s3_conn, "dim_prdtypecode.csv", init_dim_prdtypecode_csv_path)
+
     # Process listing data and user data
     listings_df = process_listing(init_listing_csv_path, init_prdtypecode_csv_path)
     user_df = init_user_table()
     dim_prdtypecode = pd.read_csv(init_dim_prdtypecode_csv_path)
-    
+
     if is_test:
         listings_df = listings_df.head(100)
-    
+
     # Connect to DuckDB
     duckdb_conn = duckdb.connect(database=duckdb_path, read_only=False)
-    
+
     # Create and populate tables
-    create_table_from_pd_into_duckdb(duckdb_conn, listings_df, 'fact_listings')
-    create_table_from_pd_into_duckdb(duckdb_conn, user_df, 'dim_user')
-    create_table_from_pd_into_duckdb(duckdb_conn, dim_prdtypecode, 'dim_prdtypecode')
-    
+    create_table_from_pd_into_duckdb(duckdb_conn, listings_df, "fact_listings")
+    create_table_from_pd_into_duckdb(duckdb_conn, user_df, "dim_user")
+    create_table_from_pd_into_duckdb(duckdb_conn, dim_prdtypecode, "dim_prdtypecode")
+
     model_prdtypecode_to_varchar_sql = "ALTER TABLE fact_listings ALTER COLUMN model_prdtypecode SET DATA TYPE VARCHAR;"
     duckdb_conn.execute(model_prdtypecode_to_varchar_sql)

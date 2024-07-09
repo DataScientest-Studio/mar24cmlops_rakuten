@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import jwt
 import os
 
+
 def generate_key():
     """
     Generate a Fernet key and save it to a file.
@@ -12,6 +13,7 @@ def generate_key():
     with open("fernet_key.txt", "wb") as key_file:
         key_file.write(key)
 
+
 def load_key():
     """
     Load the Fernet key from a file.
@@ -19,6 +21,7 @@ def load_key():
     with open("fernet_key.txt", "rb") as key_file:
         key = key_file.read()
     return key
+
 
 def encrypt_file(key, input_file, output_file):
     """
@@ -36,6 +39,7 @@ def encrypt_file(key, input_file, output_file):
     with open(output_file, "wb") as file:
         file.write(encrypted_data)
 
+
 def decrypt_file(key, input_file, output_file):
     """
     Decrypt a file using the provided key.
@@ -51,7 +55,8 @@ def decrypt_file(key, input_file, output_file):
     decrypted_data = fernet.decrypt(encrypted_data)
     with open(output_file, "wb") as file:
         file.write(decrypted_data)
-        
+
+
 def verify_password(plain_password, hashed_password):
     """
     Verifies if the plain text password matches the hashed password.
@@ -64,6 +69,7 @@ def verify_password(plain_password, hashed_password):
     - bool: True if the password matches, False otherwise.
     """
     return bcrypt.verify(plain_password, hashed_password)
+
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     """
@@ -82,5 +88,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, os.environ['JWT_KEY'], algorithm=os.environ['ALGORITHM'])
+    encoded_jwt = jwt.encode(
+        to_encode, os.environ["JWT_KEY"], algorithm=os.environ["ALGORITHM"]
+    )
     return encoded_jwt
