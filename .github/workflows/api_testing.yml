@@ -46,14 +46,15 @@ jobs:
     - name: Run Expect script to install Rye
       run: ./install-rye.expect
 
-    - name: Add Rye to PATH
+    - name: Create rye-env.sh script
       run: |
-        echo 'export PATH="$HOME/.rye/bin:$PATH"' >> $GITHUB_ENV
-        source ~/.profile  # Source .profile to update PATH
-        echo "PATH after sourcing .profile: $PATH"  # Debugging step to verify PATH
+        echo '#!/bin/bash
+        source "$HOME/.rye/env"
+        exec "$@"' > rye-env.sh
+        chmod +x rye-env.sh
 
     - name: Install project dependencies
-      run: $HOME/.rye/bin/rye sync
+      run: ./rye-env.sh rye sync
 
     - name: Run tests
-      run: $HOME/.rye/bin/rye run pytest
+      run: ./rye-env.sh rye test
