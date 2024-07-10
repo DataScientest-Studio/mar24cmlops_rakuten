@@ -71,7 +71,8 @@ class production_model_retrain:
         self.data_path=self.get_model_path()
         if not os.path.isdir(self.data_path):
             os.makedirs(self.data_path)
-        self.date_path=self.get_model_path()
+        print(self.data_path) ##########
+        print(resolve_path(os.path.join(self.data_path,"best_lstm_model.keras"))) ##########
         
     def get_model_path(self):
         folder = "staging_models"
@@ -219,7 +220,7 @@ class production_model_retrain:
         
         lstm_callbacks = [
             ModelCheckpoint(
-                filepath=resolve_path(resolve_path(os.path.join(self.data_path,"best_lstm_model.keras"))), save_best_only=True
+                filepath=resolve_path(os.path.join(self.data_path,"best_lstm_model.keras")), save_best_only=True
             ),  # Enregistre le meilleur modèle
             EarlyStopping(
                 patience=3, restore_best_weights=True
