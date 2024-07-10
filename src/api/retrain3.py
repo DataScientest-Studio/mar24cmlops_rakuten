@@ -35,19 +35,19 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 # Load environment variables from .env file
-load_dotenv('.env/.env.development')
+load_dotenv(resolve_path('.env/.env.development'))
         
 aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
 duckdb_path = os.path.join(resolve_path(os.environ['DATA_PATH']), os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
 rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
 
 class production_model_retrain:
-    def __init__(self,model_type='production',version='latest',model_name=None,is_production=True):
+    def __init__(self,model_type='production',version=None,model_name=None,is_production=True):
         self.model_type=model_type
-        if version=='latest':
+        if version is not None:
             self.version=version
         else:
-            self.version=self.date_path=datetime.now().strftime("%Y%m%d_%H-%M-%S")
+            self.version=datetime.now().strftime("%Y%m%d_%H-%M-%S")
         if model_name is None:
             self.model_name = type(
                 self
@@ -71,6 +71,7 @@ class production_model_retrain:
         self.data_path=self.get_model_path()
         if not os.path.isdir(self.data_path):
             os.makedirs(self.data_path)
+        self.date_path=self.get_model_path()
         
     def get_model_path(self):
         folder = "staging_models"
@@ -167,7 +168,7 @@ class production_model_retrain:
         liste_valeur['prdtypecode']=liste_valeur['prdtypecode'].astype(str).replace(mapper_inv)
         liste_valeur['description']=liste_valeur['designation']+str(liste_valeur['description'])
         liste_valeur.drop(['designation'],axis=1,inplace=True)
-        filepath='data/preprocessed/image_train' # limitation à un seul dossier. resolve_path ?
+        filepath=resolve_path('data/preprocessed/image_train') # limitation à un seul dossier. resolve_path ?
         liste_valeur["image_path"] = liste_valeur.apply(lambda row : resolve_path(f"{filepath}/image_{row['imageid']}_product_{row['productid']}.jpg"),axis=1)
         liste_valeur.dropna(axis=0,subset=['image_path','description'],how='any',inplace=True) 
         liste_valeur['description']=liste_valeur['description'].apply(self.preprocess_txt)  

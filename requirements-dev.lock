@@ -86,6 +86,10 @@ idna==3.7
     # via email-validator
     # via httpx
     # via requests
+imbalanced-learn==0.12.3
+    # via imblearn
+imblearn==0.0
+    # via mar24cmlops-rakuten
 iniconfig==2.0.0
     # via pytest
 jinja2==3.1.4
@@ -94,6 +98,7 @@ jmespath==1.0.1
     # via boto3
     # via botocore
 joblib==1.4.2
+    # via imbalanced-learn
     # via nltk
     # via scikit-learn
 keras==3.4.1
@@ -118,6 +123,7 @@ nltk==3.8.1
     # via mar24cmlops-rakuten
 numpy==1.26.4
     # via h5py
+    # via imbalanced-learn
     # via keras
     # via ml-dtypes
     # via opt-einsum
@@ -185,8 +191,10 @@ s3transfer==0.10.1
     # via awscli
     # via boto3
 scikit-learn==1.5.1
+    # via imbalanced-learn
     # via mar24cmlops-rakuten
 scipy==1.14.0
+    # via imbalanced-learn
     # via scikit-learn
 setuptools==70.1.1
     # via tensorboard
@@ -215,6 +223,7 @@ tensorflow-io-gcs-filesystem==0.37.0
 termcolor==2.4.0
     # via tensorflow
 threadpoolctl==3.5.0
+    # via imbalanced-learn
     # via scikit-learn
 tomli==2.0.1
     # via pytest

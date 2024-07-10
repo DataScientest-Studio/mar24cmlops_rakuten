@@ -34,12 +34,11 @@ from sklearn.model_selection import train_test_split
 from imblearn.over_sampling import RandomOverSampler
 
 # Load environment variables from .env file
-load_dotenv('.env/.env.development')
+load_dotenv(resolve_path('.env/.env.development'))
         
 aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])
 duckdb_path = os.path.join(resolve_path(os.environ['DATA_PATH']), os.environ['RAKUTEN_DB_NAME'].lstrip('/'))
 rakuten_db_name = os.environ['RAKUTEN_DB_NAME']
-
 
 # Check if the DuckDB database file exists locally, if not, download it from S3
 if not os.path.isfile(duckdb_path):
