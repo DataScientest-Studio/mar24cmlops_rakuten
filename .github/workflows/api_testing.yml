@@ -1,0 +1,28 @@
+name: Run Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x' # Remplacez '3.x' par la version de Python que vous utilisez
+
+    - name: Install Rye
+      run: |
+        curl -sSf https://rye-up.com/get | bash
+        echo 'export PATH="$HOME/.rye/bin:$PATH"' >> $GITHUB_ENV
+        source $GITHUB_ENV
+
+    - name: Install project dependencies
+      run: rye sync
+
+    - name: Run tests
+      run: rye run pytest
