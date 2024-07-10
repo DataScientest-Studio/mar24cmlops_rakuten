@@ -13,13 +13,41 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.x' # Remplacez '3.x' par la version de Python que vous utilisez
+        python-version: '3.10.11' 
 
-    - name: Install Rye
+    - name: Update system packages and install dependencies
       run: |
-        curl -sSf https://rye-up.com/get | bash
-        echo 'export PATH="$HOME/.rye/bin:$PATH"' >> $GITHUB_ENV
-        source $GITHUB_ENV
+        sudo apt-get update && sudo apt-get install -y \
+          curl \
+          git \
+          build-essential \
+          expect \
+          && sudo apt-get clean \
+          && sudo rm -rf /var/lib/apt/lists/*
+
+    - name: Download Rye installation script
+      run: |
+        curl -sSL https://rye-up.com/get -o get-rye.sh
+        chmod +x get-rye.sh
+
+    - name: Create Expect script for Rye installation
+      run: |
+        echo '#!/usr/bin/expect -f
+        set timeout -1
+        spawn ./get-rye.sh
+        expect "? Continue? (y/n)" { send "y\r" }
+        expect "Select the preferred package installer" { send "\r" }
+        expect "What should running `python` or `python3` do when you are not inside a Rye managed project?" { send "\r" }
+        expect "Which version of Python should be used as default toolchain? (cpython@3.12)" { send "3.10.11\r" }
+        expect "Should the installer add Rye to PATH via .profile?" { send "y\r" }
+        expect eof' > install-rye.expect
+        chmod +x install-rye.expect
+
+    - name: Run Expect script to install Rye
+      run: ./install-rye.expect
+
+    - name: Add Rye to PATH
+      run: echo 'export PATH="$HOME/.rye/bin:$PATH"' >> $GITHUB_ENV
 
     - name: Install project dependencies
       run: rye sync
