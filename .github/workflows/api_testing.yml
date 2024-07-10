@@ -47,10 +47,14 @@ jobs:
       run: ./install-rye.expect
 
     - name: Add Rye to PATH
-      run: echo 'export PATH="$HOME/.rye/bin:$PATH"' >> $GITHUB_ENV
+      run: echo 'PATH=$HOME/.rye/bin:$PATH' >> $GITHUB_ENV
+
+    - name: Source the environment variables
+      shell: bash
+      run: source $GITHUB_ENV
 
     - name: Install project dependencies
-      run: rye sync
+      run: $HOME/.rye/bin/rye sync
 
     - name: Run tests
-      run: rye run pytest
+      run: $HOME/.rye/bin/rye run pytest
