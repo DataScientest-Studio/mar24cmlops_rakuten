@@ -1,0 +1,26 @@
+# Ignore all image files
+*.jpg
+
+# Ignore CSV files
+*.csv
+
+# Ignore ZIP files
+*.zip
+
+# Ignore DuckDB files
+*.duckdb
+
+# Ignore model files
+*.keras
+*.pkl
+
+# Ignore image directories in various locations
+data/images/image_test/*
+data/images/image_train/*
+data/raw/image_test/*
+data/raw/image_train/*
+data/preprocessed/image_test/*
+data/preprocessed/image_train/*
+
+# Ignore the virtual environment directory
+.venv
