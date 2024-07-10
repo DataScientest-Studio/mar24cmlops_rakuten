@@ -160,7 +160,7 @@ def upload_folder_to_s3(cfg_path, local_folder, s3_folder):
             files_to_upload,
         )
 
-    return None
+    return s3_folder
 
 
 # if __name__ == "__main__":

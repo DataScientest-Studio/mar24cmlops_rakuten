@@ -66,6 +66,12 @@ target/
 # Except the readme
 !.env/README.md
 
+# tmp folder for tests
+# Ignore all content in the tmp directory
+data/tmp/*
+# Except the readme
+!data/tmp/README.md
+
 # Database
 *.db
 *.rdb
