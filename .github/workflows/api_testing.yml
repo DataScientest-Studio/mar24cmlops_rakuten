@@ -57,4 +57,16 @@ jobs:
       run: ./rye-env.sh rye sync
 
     - name: Run tests
-      run: ./rye-env.sh rye test
+      run: ./rye-env.sh rye run pytest
+      env:
+        PORT: ${{ secrets.PORT }}
+        AWS_CONFIG_PATH: ${{ secrets.AWS_CONFIG_PATH }}
+        AWS_CONFIG_FOLDER: ${{ secrets.AWS_CONFIG_FOLDER }}
+        DATA_PATH: ${{ secrets.DATA_PATH }}
+        S3_INIT_DB_PATH: ${{ secrets.S3_INIT_DB_PATH }}
+        RAKUTEN_DB_NAME: ${{ secrets.RAKUTEN_DB_NAME }}
+        S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        KEY: ${{ secrets.KEY }}
+        JWT_KEY: ${{ secrets.JWT_KEY }}
+        ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+        ALGORITHM: ${{ secrets.ALGORITHM }}
