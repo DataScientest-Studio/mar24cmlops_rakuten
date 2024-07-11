@@ -1,0 +1,20 @@
+# Utiliser l'image de base Python 3 slim
+FROM python:3-slim
+
+# Définir les variables d'environnement
+ENV MLFLOW_HOME /mlflow
+
+# Créer le répertoire de travail
+WORKDIR $MLFLOW_HOME
+
+# Copier les fichiers de l'application dans le répertoire de travail
+COPY . .
+
+# Installer MLflow et autres dépendances nécessaires
+RUN pip install --no-cache-dir mlflow
+
+# Exposer le port 5000
+EXPOSE 5000
+
+# Démarrer MLflow
+CMD ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000"]
