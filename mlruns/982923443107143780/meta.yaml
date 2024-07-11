@@ -1,0 +1,6 @@
+artifact_location: file:///home/wilfried_arc/01072024/mar24cmlops_rakuten/mlruns/982923443107143780
+creation_time: 1720688963892
+experiment_id: '982923443107143780'
+last_update_time: 1720688963892
+lifecycle_stage: active
+name: retrain3mlflow

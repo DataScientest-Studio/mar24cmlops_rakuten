@@ -1,0 +1,15 @@
+artifact_uri: file:///home/wilfried_arc/01072024/mar24cmlops_rakuten/mlruns/982923443107143780/8e5ef85b204a4d71bb1465441b8fa24f/artifacts
+end_time: 1720690527027
+entry_point_name: ''
+experiment_id: '982923443107143780'
+lifecycle_stage: active
+run_id: 8e5ef85b204a4d71bb1465441b8fa24f
+run_name: production_model_retrain/20240711_11-09-23/
+run_uuid: 8e5ef85b204a4d71bb1465441b8fa24f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1720690527011
+status: 3
+tags: []
+user_id: wilfried_arc
