@@ -1,16 +1,45 @@
 from fastapi.testclient import TestClient
 from api.fastapi_main import app
+from api.fastapi_main import app, lifespan
+import pytest
 
-client = TestClient(app)
+# Création de la fixture pour la connexion DuckDB et l'application FastAPI
+# https://stackoverflow.com/questions/75714883/how-to-test-a-fastapi-endpoint-that-uses-lifespan-function
 
+# @pytest.fixture(scope="module")
+# def client():
+#     test_client = TestClient(app, startup=lifespan, shutdown=lifespan)
+#     yield test_client
 
-def test_read_main():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"data": "hello world"}
+def test_api():
+    
+    with TestClient(app) as client:
+        
+        response = client.get("/")
+        assert response.status_code == 200
+        assert response.json() == {"data": "hello world"}
+        
+        response = client.get("/token")
+        assert response.status_code == 405
+        
+        response = client.post("/token", data={"username": "jc", "password": "jc"})
+        assert response.status_code == 200
+        assert "access_token" in response.json()
+        assert response.json()["token_type"] == "bearer"
+        
+        login_response = client.post("/token", data={"username": "jc", "password": "jc"})
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        response = client.get("/read_listing/1", headers=headers)
+        assert response.status_code == 200
+        assert "designation" in response.json()
 
+# def test_unauthorized_login(client):
+#     """Testing if secured endpoint doesnt work because it has no auth."""
+#     response = client.get("/token")
+#     assert response.status_code == 405
 
-# def test_login_for_access_token():
+# def test_login_for_access_token(client):
 #     response = client.post("/token", data={"username": "testuser", "password": "testpassword"})
 #     assert response.status_code == 200
 #     assert "access_token" in response.json()

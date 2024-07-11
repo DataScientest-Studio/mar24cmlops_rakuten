@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list, s3_conn
 
     # Load environment variables from .env file
-    env_path = resolve_path(".env/.env.development")
+    env_path = resolve_path(".envp/.env.development")
     load_dotenv(env_path)
 
     # Convert paths to absolute paths
