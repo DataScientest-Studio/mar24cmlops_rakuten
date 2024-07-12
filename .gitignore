@@ -132,3 +132,5 @@ models/staging_models/*
 !models/model_list.txt
 data/rakuten_db.duckdb.wal
 .env
+
+!data/zazie.jpg
