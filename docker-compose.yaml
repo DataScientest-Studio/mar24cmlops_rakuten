@@ -90,7 +90,7 @@ services:
   fastapi:
     build:
       context: . # Peut etre modifié en ./api si jamais 
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.api
     ports:
       - "8001:8001"
     volumes:
