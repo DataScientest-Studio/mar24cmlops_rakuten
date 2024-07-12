@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  retrain:
+    container_name: retrain_mlflow_cont1
+    image: retrain_mlflow_img
+#    volumes:
+#      - ./data:/app/data
+#      - ./models:/app/models
+#      - ./mlruns:/app/mlruns
+    volumes:
+      - type: volume
+        source: volume_data
+        target: /app/data
+      - type: volume
+        source: train_models
+        target: /app/models
+      - type: volume
+        source: v_mlruns
+        target: /app/mlruns
+volumes:
+  volume_data:
+    external: true
+  train_models:
+    external: true
+  v_mlruns:
+    external: true
