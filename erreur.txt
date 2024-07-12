@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/wilfried_arc/01072024/mar24cmlops_rakuten/src/api/tentative.py", line 1, in <module>
+    from api.utils.get_models import verify_and_download_models
+ModuleNotFoundError: No module named 'api'
