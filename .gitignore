@@ -62,9 +62,9 @@ target/
 
 # DotEnv configuration
 # Ignore all content in the .env directory
-.env/*
+.envp/*
 # Except the readme
-!.env/README.md
+!.envp/README.md
 
 # tmp folder for tests
 # Ignore all content in the tmp directory
@@ -89,6 +89,10 @@ data/tmp/*
 
 # VS Code
 .vscode/
+
+mlflow/*
+
+airflow/*
 
 # Spyder
 .spyproject/
@@ -127,3 +131,6 @@ models/staging_models/*
 !models/README.md
 !models/model_list.txt
 data/rakuten_db.duckdb.wal
+.env
+
+!data/zazie.jpg
