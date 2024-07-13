@@ -63,6 +63,7 @@ fastapi-cli==0.0.4
 filelock==3.15.4
     # via torch
     # via triton
+flake8==7.1.0
 flatbuffers==24.3.25
     # via tensorflow
 fsspec==2024.6.1
@@ -113,6 +114,8 @@ markdown-it-py==3.0.0
 markupsafe==2.1.5
     # via jinja2
     # via werkzeug
+mccabe==0.7.0
+    # via flake8
 mdurl==0.1.2
     # via markdown-it-py
 ml-dtypes==0.3.2
@@ -189,12 +192,16 @@ protobuf==4.25.3
     # via tensorflow
 pyasn1==0.6.0
     # via rsa
+pycodestyle==2.12.0
+    # via flake8
 pycparser==2.22
     # via cffi
 pydantic==2.7.2
     # via fastapi
 pydantic-core==2.18.3
     # via pydantic
+pyflakes==3.2.0
+    # via flake8
 pygments==2.18.0
     # via rich
 pyjwt==2.8.0
