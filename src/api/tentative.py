@@ -4,8 +4,8 @@ from api.utils.make_db import process_listing
 from api.utils.resolve_path import resolve_path
 import pandas as pd
 from dotenv import load_dotenv
-
-
+import os
+from datetime import datetime,timedelta
 
 
 
@@ -32,11 +32,18 @@ if __name__=="__main__":
     verify_and_download_models(aws_config_path, resolve_path("models/model_list.txt"))
     
     # Load model list
-    mdl_list = load_models_from_file(
-        aws_config_path, resolve_path("models/model_list.txt")
-    )
+#    mdl_list = load_models_from_file(
+#        aws_config_path, resolve_path("models/model_list.txt")
+#    )
     
-    X_pathway=resolve_path(os.path.join('data','X_train.cv'))
-    Y_pathway=resolve_path(os.path.join('data','Y_train.cv'))
+    X_pathway=resolve_path(os.path.join('data','X_train.csv'))
+    Y_pathway=resolve_path(os.path.join('data','Y_train.csv'))
     df=process_listing(X_pathway,Y_pathway)
     print(df.head())
+    longueur=df.shape[0]
+    init_ind=int(longueur*3/10)
+    init_date=datetime.strptime("2024-07-01","%Y-%m-%d")
+    print(init_date)
+    for i in range(init_ind,(longueur-init_ind),100):
+        df.loc[(init_ind+i):(init_ind+i+99),'validate_datetime']=init_date+timedelta(days=int(i/100))
+### Prediction sur les 30% 
