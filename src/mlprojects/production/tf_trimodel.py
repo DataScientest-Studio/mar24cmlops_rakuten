@@ -204,8 +204,6 @@ class tf_trimodel:
 
 # Exemple d'utilisation
 
-# model = tf_trimodel("tf_trimodel", "20240708_19-15-54", "production")
-
 # text_designation = "Jeu video"
 # text_description = "Titi et les bijoux magiques jeux video enfants gameboy advance"
 # image_path = resolve_path("data/images/image_train/image_528113_product_923222.jpg")

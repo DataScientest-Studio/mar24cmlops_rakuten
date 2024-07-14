@@ -2,7 +2,6 @@ import os
 import pickle
 import numpy as np
 from datetime import datetime
-from scipy.optimize import minimize
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -10,7 +9,7 @@ from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 from api.utils.resolve_path import resolve_path
 from mlprojects.production.tf_trimodel import tf_trimodel
-import pandas as pd
+
 
 class tf_trimodel_extended(tf_trimodel):
     """
@@ -124,10 +123,10 @@ class tf_trimodel_extended(tf_trimodel):
         self.retrained_base_path = os.path.join(
             self.retrained_base_path, self.retrained_version
         )
-        
+
         # Create the directory if it does not exist
         os.makedirs(self.retrained_base_path, exist_ok=True)
-        
+
         print(self.retrained_base_path)
         # Update tokenizer with new text data
         self.new_tokenizer = tf.keras.preprocessing.text.Tokenizer()
@@ -207,15 +206,37 @@ class tf_trimodel_extended(tf_trimodel):
             os.path.join(self.retrained_base_path, "combined_model.keras")
         )
 
-# Exemple d'utilisation
-X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
-Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
-listing_df = X_train.join(Y_train)
 
-listing_df = listing_df.sample(5000)
+# # Exemple d'utilisation
+# X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
+# Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
+# listing_df = X_train.join(Y_train)
 
-# Initialiser l'extension du modèle
-extended_model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
+# listing_df = listing_df.sample(5000)
 
-# Réentraîner le modèle avec les nouvelles données
-extended_model.train_model(listing_df)
+# # Initialiser l'extension du modèle
+# extended_model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
+
+# # Réentraîner le modèle avec les nouvelles données
+# extended_model.train_model(listing_df)
+
+
+# Autre exemple de batch predict
+# import pandas as pd
+
+# X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
+# Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
+# listing_df = X_train.join(Y_train)
+
+# listing_df = listing_df.sample(10)
+# listing_df["image_path"] = listing_df.apply(
+#     lambda row: resolve_path(
+#         f"data/images/image_train/image_{row['imageid']}_product_{row['productid']}.jpg"
+#     ),
+#     axis=1,
+# )
+# model = tf_trimodel_extended("tf_trimodel", "20240714_22-20-29", "staging")
+
+# result = model._predict_from_dataframe(listing_df)
+
+# print(pd.DataFrame(result))
