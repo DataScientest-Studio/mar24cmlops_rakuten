@@ -1,32 +1,120 @@
 from mlprojects.production.tf_trimodel import tf_trimodel
-import numpy as np 
-import os 
+import numpy as np
+import os
 import pickle
 from scipy.optimize import minimize
 from api.utils.resolve_path import resolve_path
 from api.utils.make_db import process_listing
+from datetime import datetime
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+import tensorflow as tf
+from tensorflow.keras.utils import to_categorical
+from sklearn.model_selection import train_test_split
+
 
 class tf_trimodel_extended(tf_trimodel):
     """
-    Extended class of tf_trimodel with additional methods to retrain the model 
+    Extended class of tf_trimodel with additional methods to retrain the model
     and the aggregation layer.
     """
 
     def __init__(self, model_name, version, model_type):
         """
         Initialize the tf_trimodel_extended class.
-        
+
         Args:
             model_name (str): Name of the model.
             version (str): Version of the model.
             model_type (str): Type of the model (production or staging).
         """
         super().__init__(model_name, version, model_type)
-        
-    def train_model(self, new_text_data, new_image_data, new_labels, epochs=10, batch_size=32):
+        self.retrained_base_path = resolve_path(
+            (f"models/staging_models/{model_name}/")
+        )
+        self.is_retrained = False
+        self.num_epochs = 15
+        self.num_listings = 5000
+        self.batch_size = 32
+
+    def load_and_preprocess_image(self, path):
+        img = load_img(path, target_size=(224, 224))
+        img_array = img_to_array(img)
+        img_array = tf.keras.applications.vgg16.preprocess_input(img_array)
+        return img_array
+
+    def process_df_for_train(self, df):
+        # Prétraitement des textes
+        texts = (df["description"] + " " + df["designation"]).astype(str)
+        df["image_path"] = df.apply(
+            lambda row: resolve_path(
+                f"data/images/image_train/image_{row['imageid']}_product_{row['productid']}.jpg"
+            ),
+            axis=1,
+        )
+        image_paths = df["image_path"].values
+        images = np.array(
+            [self.load_and_preprocess_image(path) for path in image_paths]
+        )
+        return texts, images
+
+    def process_texts_for_train(self, texts):
+        sequences = self.new_tokenizer.texts_to_sequences(texts)
+        padded_sequences = self.new_tokenizer(sequences, maxlen=100)
+        return padded_sequences
+
+    def make_modalite_mapping_and_labels(self, df):
+        # Encoder les labels
+        modalite_mapping = {
+            int(modalite): i for i, modalite in enumerate(df["prdtypecode"].unique())
+        }
+        df["target_prdtypecode"] = df["prdtypecode"].replace(modalite_mapping)
+        labels = df["target_prdtypecode"]
+        num_classes = len(np.unique(labels))
+        labels = to_categorical(labels, num_classes=num_classes)
+
+        with open(
+            os.path.join(self.retrained_base_path, "modalite_mapping.pkl"), "wb"
+        ) as pickle_file:
+            pickle.dump(modalite_mapping, pickle_file)
+
+        return modalite_mapping, labels, num_classes
+
+    def create_text_model(self, num_classes):
+        text_input = tf.keras.Input(shape=(100,), name="text_input")
+        x = tf.keras.layers.Embedding(input_dim=10000, output_dim=64)(text_input)
+        x = tf.keras.layers.LSTM(128)(x)
+        x = tf.keras.layers.Dense(64, activation="relu")(x)
+        text_output = tf.keras.layers.Dense(
+            num_classes, activation="softmax", name="text_output"
+        )(x)
+        return tf.keras.Model(inputs=text_input, outputs=text_output)
+
+    def create_image_model(self, num_classes):
+        image_input = tf.keras.Input(shape=(224, 224, 3), name="image_input")
+        base_model = tf.keras.applications.VGG16(
+            include_top=False, input_tensor=image_input
+        )
+        base_model.trainable = False  # Fine-tuning
+        x = tf.keras.layers.Flatten()(base_model.output)
+        x = tf.keras.layers.Dense(256, activation="relu")(x)
+        image_output = tf.keras.layers.Dense(
+            num_classes, activation="softmax", name="image_output"
+        )(x)
+        return tf.keras.Model(inputs=image_input, outputs=image_output)
+
+    def create_combined_model(self,num_classes, text_model, image_model):
+        combined_input = tf.keras.layers.concatenate(
+            [text_model.output, image_model.output]
+        )
+        x = tf.keras.layers.Dense(
+            num_classes, activation="softmax", name="combined_output"
+        )(combined_input)
+        return tf.keras.Model(inputs=[text_model.input, image_model.input], outputs=x)
+    
+    def train_model(self, new_df, epochs=10, batch_size=32):
         """
         Retrain the models with new data.
-        
+
         Args:
             new_text_data (list of str): New text data for retraining.
             new_image_data (list of str or bytes): New image data for retraining.
@@ -34,99 +122,99 @@ class tf_trimodel_extended(tf_trimodel):
             epochs (int): Number of epochs for retraining.
             batch_size (int): Batch size for retraining.
         """
+        self.is_retrained = True
+        self.retrained_version = datetime.now().strftime("%Y%m%d_%H-%M-%S")
+        self.retrained_base_path = os.path.join(
+            self.retrained_base_path, f"/{self.retrained_version}/"
+        )
+
         # Update tokenizer with new text data
-        self.tokenizer.fit_on_texts(new_text_data)
-        
-        # Save the updated tokenizer
-        tokenizer_json = self.tokenizer.to_json()
-        model_path = self.get_model_path()
-        with open(os.path.join(model_path, "tokenizer_config.json"), "w", encoding="utf-8") as json_file:
-            json_file.write(tokenizer_json)
-        
-        # Process the new text data
-        processed_texts = [self.process_txt(text) for text in new_text_data]
-        text_sequences = np.array([sequence[0] for sequence in processed_texts])
-        
-        # Process the new image data
-        processed_images = [self.process_img(self.path_to_img(img)) if isinstance(img, str) else self.process_img(self.byte_to_img(img)) for img in new_image_data]
-        image_arrays = np.array(processed_images)
-        
-        # Transform the labels
-        new_labels = np.array(new_labels)
-        
-        # Compile the LSTM text model
-        self.lstm.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        
-        # Retrain the LSTM text model
-        self.lstm.fit(text_sequences, new_labels, epochs=epochs, batch_size=batch_size, verbose=1)
-        
-        # Compile the VGG16 image model
-        self.vgg16.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        
-        # Retrain the VGG16 image model
-        self.vgg16.fit(image_arrays, new_labels, epochs=epochs, batch_size=batch_size, verbose=1)
-        
-        # Save the retrained models
-        self.lstm.save(os.path.join(model_path, "retrained_lstm_model.keras"))
-        self.vgg16.save(os.path.join(model_path, "retrained_vgg16_model.keras"))
+        self.new_tokenizer = self.tokenizer.fit_on_texts(new_df)
 
-    def retrain_agg_layer(self, new_text_data, new_image_data, new_labels, epochs=10, batch_size=32):
-        """
-        Retrain the aggregation layer with new data.
+        # Sauvegarde du tokenizer
+        with open(
+            os.path.join(self.retrained_base_path, "tokenizer.pkl"), "wb"
+        ) as handle:
+            pickle.dump(self.new_tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        texts, images = self.process_df_for_train(new_df)
+        padded_sequences = self.process_texts_for_train(texts)
+
+        modalite_mapping, labels, num_classes = self.make_modalite_mapping_and_labels(
+            new_df
+        )
+
+        X_train_texts, X_test_texts, X_train_images, X_test_images, y_train, y_test = (
+            train_test_split(
+                padded_sequences, images, labels, test_size=0.2, random_state=42
+            )
+        )
+
+        text_model = self.create_text_model(num_classes)
+        # Compiler et entraîner le modèle textuel seul
+        text_model.compile(
+            optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+        )
+
+        text_model.fit(
+            X_train_texts,
+            y_train,
+            epochs=self.num_epochs,
+            batch_size=batch_size,
+            validation_data=(X_test_texts, y_test),
+        )
+
+        # Sauvegarder le modèle textuel
+        text_model.save(os.path.join(self.retrained_base_path, "text_model.keras"))
+
+        # Modèle VGG16 pour les images
+        image_model = self.create_image_model(num_classes)
+
+        # Compiler et entraîner le modèle d'image seul
+        image_model.compile(
+            optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+        )
+
+        image_model.fit(
+            X_train_images,
+            y_train,
+            epochs=self.num_epochs,
+            batch_size=batch_size,
+            validation_data=(X_test_images, y_test),
+        )
+
+        # Sauvegarder le modèle d'image
+        image_model.save(os.path.join(self.retrained_base_path, "image_model.keras"))
+
+        # Désactiver l'entraînement pour les modèles préentraînés
+        text_model.trainable = False
+        image_model.trainable = False
         
-        Args:
-            new_text_data (list of str): New text data for retraining.
-            new_image_data (list of str or bytes): New image data for retraining.
-            new_labels (list of int): New labels for retraining.
-            epochs (int): Number of epochs for retraining.
-            batch_size (int): Batch size for retraining.
-        """
-        # Process the new text data
-        processed_texts = [self.process_txt(text) for text in new_text_data]
-        text_sequences = np.array([sequence[0] for sequence in processed_texts])
+        combined_model = self.create_combined_model(text_model, image_model)
+
+        # Compiler le modèle combiné
+        combined_model.compile(
+            optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+        )
+
+        # Entraîner le modèle combiné
+        combined_model.fit(
+            [X_train_texts, X_train_images],
+            y_train,
+            epochs=self.num_epochs,
+            batch_size=batch_size,
+            validation_data=([X_test_texts, X_test_images], y_test),
+        )
+
+        # Sauvegarder le modèle combiné
+        combined_model.save(os.path.join(self.retrained_base_path, "combined_model.keras"))
         
-        # Process the new image data
-        processed_images = [self.process_img(self.path_to_img(img)) if isinstance(img, str) else self.process_img(self.byte_to_img(img)) for img in new_image_data]
-        image_arrays = np.array(processed_images)
-        
-        # Transform the labels
-        new_labels = np.array(new_labels)
+# listing_df = process_listing(resolve_path('data/X_train.csv'),resolve_path('data/Y_train.csv'))
+# listing_df = listing_df.head(1000)
 
-        # Get the probabilities from the text and image models
-        text_probs = np.array([self.predict_text(seq)[1] for seq in text_sequences])
-        image_probs = np.array([self.predict_img(img)[1] for img in image_arrays])
+# new_text_data = list(listing_df['designation'])
+# new_image_data = listing_df.apply(lambda row: resolve_path(f"image_{row['imageid']}_product_{row['productid']}"), axis=1).tolist()
+# new_labels = list(listing_df['user_prdtypecode'])
 
-        # Define the objective function for optimization
-        def objective(weights):
-            weighted_probs = weights[0] * text_probs + weights[1] * image_probs
-            predictions = np.argmax(weighted_probs, axis=1)
-            accuracy = np.mean(predictions == new_labels)
-            return -accuracy  # Minimize negative accuracy
-
-        # Initial weights
-        initial_weights = self.best_weights
-        
-        # Optimize the weights
-        result = minimize(objective, initial_weights, method='Nelder-Mead')
-        optimized_weights = result.x
-
-        # Update the best weights
-        self.best_weights = optimized_weights
-        
-        # Save the updated best weights
-        model_path = self.get_model_path()
-        with open(os.path.join(model_path, "best_weights.pkl"), "wb") as file:
-            pickle.dump(self.best_weights, file)
-        
-# Exemple d'utilisation de la classe étendue
-#tf_model_extended = tf_trimodel_extended(model_name='tf_trimodel', version='20240708_18-15-54', model_type='production')
-
-listing_df = process_listing(resolve_path('data/X_train.csv'),resolve_path('data/Y_train.csv'))
-listing_df = listing_df.head(1000)
-
-new_text_data = list(listing_df['designation'])
-new_image_data = listing_df.apply(lambda row: resolve_path(f"image_{row['imageid']}_product_{row['productid']}"), axis=1).tolist()
-new_labels = list(listing_df['user_prdtypecode'])
-
-tf_model_extended.retrain_model(new_text_data, new_image_data, new_labels)
-tf_model_extended.retrain_agg_layer(new_text_data, new_image_data, new_labels)
+# tf_model_extended.retrain_model(new_text_data, new_image_data, new_labels)
+# tf_model_extended.retrain_agg_layer(new_text_data, new_image_data, new_labels)

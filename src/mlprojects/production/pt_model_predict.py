@@ -11,7 +11,7 @@ from io import BytesIO
 
 # Chargement des données
 
-base_path = resolve_path('data/test_model/')
+base_path = resolve_path("data/test_model/")
 
 X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
 Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
@@ -20,36 +20,47 @@ listing_df = X_train.join(Y_train)
 # Prétraitement des textes
 
 listing_df["image_path"] = listing_df.apply(
-    lambda row: resolve_path(f"data/images/image_train/image_{row['imageid']}_product_{row['productid']}.jpg"),
+    lambda row: resolve_path(
+        f"data/images/image_train/image_{row['imageid']}_product_{row['productid']}.jpg"
+    ),
     axis=1,
 )
 
+
 # Charger les modèles sauvegardés
 def load_models():
-    text_model = load_model(os.path.join(base_path,'text_model.keras'))
-    image_model = load_model(os.path.join(base_path,'image_model.keras'))
-    combined_model = load_model(os.path.join(base_path,'combined_model.keras'))
+    text_model = load_model(os.path.join(base_path, "text_model.keras"))
+    image_model = load_model(os.path.join(base_path, "image_model.keras"))
+    combined_model = load_model(os.path.join(base_path, "combined_model.keras"))
     return text_model, image_model, combined_model
+
 
 # Charger les modèles
 text_model, image_model, combined_model = load_models()
 
 # Charger le tokenizer depuis le fichier tokenizer.pkl
-with open(os.path.join(base_path,'tokenizer.pkl'), 'rb') as handle:
+with open(os.path.join(base_path, "tokenizer.pkl"), "rb") as handle:
     tokenizer = pickle.load(handle)
-    
+
+
 def path_to_img(image_path):
     img = load_img(image_path, target_size=(224, 224))
     img_array = img_to_array(img)
-    img_array = tf.keras.applications.vgg16.preprocess_input(np.expand_dims(img_array, axis=0))
+    img_array = tf.keras.applications.vgg16.preprocess_input(
+        np.expand_dims(img_array, axis=0)
+    )
     return img_array
+
 
 def byte_to_img(image_bytes):
     img = load_img(BytesIO(image_bytes), target_size=(224, 224))
     img_array = img_to_array(img)
-    img_array = tf.keras.applications.vgg16.preprocess_input(np.expand_dims(img_array, axis=0))
+    img_array = tf.keras.applications.vgg16.preprocess_input(
+        np.expand_dims(img_array, axis=0)
+    )
     return img_array
-    
+
+
 def predict_single_data(text_designation, text_description, image):
     # Prétraitement du texte
     text = str(text_description) + " " + str(text_designation)
@@ -66,7 +77,7 @@ def predict_single_data(text_designation, text_description, image):
 
     # Prédiction avec le modèle combiné
     text_pred, image_pred, combined_pred = None, None, None
-    
+
     # Prédiction avec le modèle de texte seul
     text_pred = text_model.predict(padded_sequence)
 
@@ -84,43 +95,49 @@ def predict_single_data(text_designation, text_description, image):
     return {
         "text_prediction": {
             "class": text_pred_class,
-            "probability": float(text_pred[0][text_pred_class])
+            "probability": float(text_pred[0][text_pred_class]),
         },
         "image_prediction": {
             "class": image_pred_class,
-            "probability": float(image_pred[0][image_pred_class])
+            "probability": float(image_pred[0][image_pred_class]),
         },
         "combined_prediction": {
             "class": combined_pred_class,
-            "probability": float(combined_pred[0][combined_pred_class])
-        }
+            "probability": float(combined_pred[0][combined_pred_class]),
+        },
     }
+
 
 def predict_from_dataframe(df):
     predictions = []
 
     for index, row in df.iterrows():
-        text_designation = row['designation']
-        text_description = row['description']
-        image_path = row['image_path']
+        text_designation = row["designation"]
+        text_description = row["description"]
+        image_path = row["image_path"]
 
-        prediction_result = predict_single_data(text_designation, text_description, image_path)
-        predictions.append({
-            "text_designation": text_designation,
-            "text_description": text_description,
-            "image_path": image_path,
-            "predictions": prediction_result
-        })
+        prediction_result = predict_single_data(
+            text_designation, text_description, image_path
+        )
+        predictions.append(
+            {
+                "text_designation": text_designation,
+                "text_description": text_description,
+                "image_path": image_path,
+                "predictions": prediction_result,
+            }
+        )
 
     return predictions
+
 
 # Exemple d'utilisation
 text_designation = "Jeu video"
 text_description = "Titi et les bijoux magiques jeux video enfants gameboy advance"
 image_path = resolve_path("data/images/image_train/image_528113_product_923222.jpg")
 result = predict_single_data(text_designation, text_description, image_path)
-#print(json.dumps(result['predictions'], indent=4))
-print(result['combined_prediction']['class'])
+# print(json.dumps(result['predictions'], indent=4))
+print(result["combined_prediction"]["class"])
 
 # Exemple d'utilisation avec un DataFrame
 df = listing_df.iloc[0:2]

@@ -346,7 +346,9 @@ async def listing_submit(
         image_file.write(listing.image.file.read())
 
     # Predict using the loaded models
-    pred = predict_from_list_models(mdl_list, listing.description, listing.designation, image_path)
+    pred = predict_from_list_models(
+        mdl_list, listing.description, listing.designation, image_path
+    )
     # Convert prediction dictionary to a JSON string
     pred_json = json.dumps(pred)
 
@@ -454,7 +456,12 @@ async def predict_listing(
     if not result:
         raise HTTPException(status_code=404, detail="Listing not found")
 
-    description, designation, productid, imageid = result[0], result[1], result[2], result[3]
+    description, designation, productid, imageid = (
+        result[0],
+        result[1],
+        result[2],
+        result[3],
+    )
     image_path = resolve_path(
         f"data/images/submitted_images/image_{imageid}_product_{productid}.jpg"
     )
