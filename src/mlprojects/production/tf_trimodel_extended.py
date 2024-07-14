@@ -1,15 +1,15 @@
-from mlprojects.production.tf_trimodel import tf_trimodel
-import numpy as np
 import os
 import pickle
-from scipy.optimize import minimize
-from api.utils.resolve_path import resolve_path
-from api.utils.make_db import process_listing
+import numpy as np
 from datetime import datetime
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
+from scipy.optimize import minimize
 import tensorflow as tf
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
+from api.utils.resolve_path import resolve_path
+from mlprojects.production.tf_trimodel import tf_trimodel
 
 
 class tf_trimodel_extended(tf_trimodel):
@@ -43,7 +43,6 @@ class tf_trimodel_extended(tf_trimodel):
         return img_array
 
     def process_df_for_train(self, df):
-        # Prétraitement des textes
         texts = (df["description"] + " " + df["designation"]).astype(str)
         df["image_path"] = df.apply(
             lambda row: resolve_path(
@@ -59,11 +58,10 @@ class tf_trimodel_extended(tf_trimodel):
 
     def process_texts_for_train(self, texts):
         sequences = self.new_tokenizer.texts_to_sequences(texts)
-        padded_sequences = self.new_tokenizer(sequences, maxlen=100)
+        padded_sequences = pad_sequences(sequences, maxlen=100)
         return padded_sequences
 
     def make_modalite_mapping_and_labels(self, df):
-        # Encoder les labels
         modalite_mapping = {
             int(modalite): i for i, modalite in enumerate(df["prdtypecode"].unique())
         }
@@ -102,7 +100,7 @@ class tf_trimodel_extended(tf_trimodel):
         )(x)
         return tf.keras.Model(inputs=image_input, outputs=image_output)
 
-    def create_combined_model(self,num_classes, text_model, image_model):
+    def create_combined_model(self, num_classes, text_model, image_model):
         combined_input = tf.keras.layers.concatenate(
             [text_model.output, image_model.output]
         )
@@ -110,15 +108,13 @@ class tf_trimodel_extended(tf_trimodel):
             num_classes, activation="softmax", name="combined_output"
         )(combined_input)
         return tf.keras.Model(inputs=[text_model.input, image_model.input], outputs=x)
-    
-    def train_model(self, new_df, epochs=10, batch_size=32):
+
+    def train_model(self, new_df):
         """
         Retrain the models with new data.
 
         Args:
-            new_text_data (list of str): New text data for retraining.
-            new_image_data (list of str or bytes): New image data for retraining.
-            new_labels (list of int): New labels for retraining.
+            new_df (DataFrame): New data for retraining.
             epochs (int): Number of epochs for retraining.
             batch_size (int): Batch size for retraining.
         """
@@ -129,7 +125,9 @@ class tf_trimodel_extended(tf_trimodel):
         )
 
         # Update tokenizer with new text data
-        self.new_tokenizer = self.tokenizer.fit_on_texts(new_df)
+        self.new_tokenizer = self.tokenizer.fit_on_texts(
+            (new_df["description"] + " " + new_df["designation"]).astype(str)
+        )
 
         # Sauvegarde du tokenizer
         with open(
@@ -151,35 +149,29 @@ class tf_trimodel_extended(tf_trimodel):
         )
 
         text_model = self.create_text_model(num_classes)
-        # Compiler et entraîner le modèle textuel seul
         text_model.compile(
             optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
         )
-
         text_model.fit(
             X_train_texts,
             y_train,
             epochs=self.num_epochs,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             validation_data=(X_test_texts, y_test),
         )
 
         # Sauvegarder le modèle textuel
         text_model.save(os.path.join(self.retrained_base_path, "text_model.keras"))
 
-        # Modèle VGG16 pour les images
         image_model = self.create_image_model(num_classes)
-
-        # Compiler et entraîner le modèle d'image seul
         image_model.compile(
             optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
         )
-
         image_model.fit(
             X_train_images,
             y_train,
             epochs=self.num_epochs,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             validation_data=(X_test_images, y_test),
         )
 
@@ -189,32 +181,22 @@ class tf_trimodel_extended(tf_trimodel):
         # Désactiver l'entraînement pour les modèles préentraînés
         text_model.trainable = False
         image_model.trainable = False
-        
-        combined_model = self.create_combined_model(text_model, image_model)
 
-        # Compiler le modèle combiné
+        combined_model = self.create_combined_model(
+            num_classes, text_model, image_model
+        )
         combined_model.compile(
             optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
         )
-
-        # Entraîner le modèle combiné
         combined_model.fit(
             [X_train_texts, X_train_images],
             y_train,
             epochs=self.num_epochs,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             validation_data=([X_test_texts, X_test_images], y_test),
         )
 
         # Sauvegarder le modèle combiné
-        combined_model.save(os.path.join(self.retrained_base_path, "combined_model.keras"))
-        
-# listing_df = process_listing(resolve_path('data/X_train.csv'),resolve_path('data/Y_train.csv'))
-# listing_df = listing_df.head(1000)
-
-# new_text_data = list(listing_df['designation'])
-# new_image_data = listing_df.apply(lambda row: resolve_path(f"image_{row['imageid']}_product_{row['productid']}"), axis=1).tolist()
-# new_labels = list(listing_df['user_prdtypecode'])
-
-# tf_model_extended.retrain_model(new_text_data, new_image_data, new_labels)
-# tf_model_extended.retrain_agg_layer(new_text_data, new_image_data, new_labels)
+        combined_model.save(
+            os.path.join(self.retrained_base_path, "combined_model.keras")
+        )
