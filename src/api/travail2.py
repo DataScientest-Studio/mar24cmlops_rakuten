@@ -9,6 +9,7 @@ from datetime import datetime,timedelta
 import duckdb
 import argparse
 
+
 def img_path_create(df):
     df['image']=os.path.join(resolve_path('data/preprocessed/image_train'),'image_')+df['imageid'].astype(str)+'_product_'+df['productid'].astype(str)+'.jpg'
     df.drop(['imageid','productid'],axis=1,inplace=True)
@@ -21,7 +22,6 @@ def df_create():
     df=df.dropna(subset=['user_prdtypecode'],how='any')    
     df['user_prdtypecode']=df['user_prdtypecode'].astype(int)
     return df
-
 
 
 def date_initialization(df):
@@ -42,8 +42,8 @@ def db_restriction(df,i_date,f_date):
 def prediction(df,model):
     return model.batch_predict(dfr[['description','designation','image']])
 
-if __name__=='__main__':
-
+#if __name__=='__main__':
+def execution(model_type='production',model_name='production_model_retrain',production='staging',version='lastest',i_date=None,f_date=None)
     global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list, s3_conn, init_date
     init_date=datetime.strptime("2024-07-01","%Y-%m-%d")
 
@@ -61,23 +61,23 @@ if __name__=='__main__':
         resolve_path(os.environ["AWS_CONFIG_FOLDER"]), ".encrypted"
     )
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--i_date", help="start date",default=init_date)
-    parser.add_argument("--f_date",help="end date",default=None)
-    parser.add_argument('--version',default='latest')
-    parser.add_argument('--production',default='staging')
-    parser.add_argument('--model_name',default='production_model_retrain')
-    args = parser.parse_args()
+    #parser = argparse.ArgumentParser()
+    #parser.add_argument("--i_date", help="start date",default=init_date)
+    #parser.add_argument("--f_date",help="end date",default=None)
+    #parser.add_argument('--version',default='latest')
+    #parser.add_argument('--production',default='staging')
+    #parser.add_argument('--model_name',default='production_model_retrain')
+    #args = parser.parse_args()
 
-    model = tf_trimodel(model_type=args.production, version=args.version) # un seul à déclarer, ne pas les multiplier
-
+    #model = tf_trimodel(model_type=args.production, version=args.version) # un seul à déclarer, ne pas les multiplier
+    model = tf_trimodel(model_type=model_type, model_name=model_name,version=version) # un seul à déclarer, ne pas les multiplier
+    
     df=df_create()
     date_initialization(df)            
     # Prédiction
-    i_date=datetime.strptime(args.i_date,"%Y-%m-%d")
-    if args.f_date is not None:
-        f_date=datetime.strptime(args.f_date,"%Y-%m-%d")
-    else:
+    if i_date is None:
+        i_date=init_date
+    if f_date is None:
         f_date=i_date+timedelta(days=1)
     dfr=db_restriction(df,i_date,f_date)
     result=prediction(dfr,model)

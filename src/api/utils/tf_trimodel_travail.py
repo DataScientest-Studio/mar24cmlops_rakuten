@@ -38,16 +38,15 @@ class tf_trimodel:
             base_path=resolve_path('models/production_model/')
         else :
             folder='staging_models'
-            self.version='20240711_11-09-23' # temporaire pour le développement
+            self.version='20240711_11-09-23' # temporaire pour le développement: à éliminer au final
             if self.version == "latest":
                 versions = sorted(
                     os.listdir(resolve_path(f"models/{folder}/{self.model_name}/"))
                 )
                 version = versions[-1]
             else:
-                version = '20240711_11-09-23' # temporaire pour le développement            
+                version = '20240711_11-09-23' # temporaire pour le développement : à éliminer au final        
                 base_path = resolve_path(f"models/{folder}/{self.model_name}/{version}/")
-
             #base_path=resolve_path(f"models/staging_models/production_model_retrain/20240711_11-09-23/")        
         return base_path
 
