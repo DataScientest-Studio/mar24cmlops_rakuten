@@ -16,12 +16,22 @@ import json
 from io import BytesIO
 import pickle
 
+nltk.download("punkt")
+nltk.download("stopwords")
+nltk.download("wordnet")
+self.lemmatizer = WordNetLemmatizer()
+self.stop_words = set(stopwords.words("french"))
 
 class tf_trimodel:
-    def __init__(self, model_name='production_model_retrain', model_type="production", version="latest"):
+    def __init__(self, model_name=None, model_type="production", version="latest"):
         self.model_type = model_type
         self.version = version
-        self.model_name = model_name
+        if model_name is None:
+            self.model_name = type(
+                self
+            ).__name__  # Utilise le nom de la classe comme nom par défaut
+        else:
+            self.model_name = model_name
         self.lemmatizer = None
         self.tokenizer = None
         self.stop_words = None
@@ -34,29 +44,32 @@ class tf_trimodel:
         self.load_model_utils()
 
     def get_model_path(self):
-        if self.model_type=='production':
-            base_path=resolve_path('models/production_model/')
-        else :
-            folder='staging_models'
-            self.version='20240711_11-09-23' # temporaire pour le développement
-            if self.version == "latest":
-                versions = sorted(
-                    os.listdir(resolve_path(f"models/{folder}/{self.model_name}/"))
-                )
-                version = versions[-1]
-            else:
-                version = '20240711_11-09-23' # temporaire pour le développement            
-                base_path = resolve_path(f"models/{folder}/{self.model_name}/{version}/")
+        # Determine folder type based on model_type
+        #folder = (
+        #    "production_model" if self.model_type == "production" else "staging_models"
+        #)##""
 
-            #base_path=resolve_path(f"models/staging_models/production_model_retrain/20240711_11-09-23/")        
+        # Determine version folder
+        #if self.version == "latest":
+        #    versions = sorted(
+        #        os.listdir(resolve_path(f"models/{folder}/{self.model_name}/"))
+        #    )
+        #    version = versions[-1]
+        #else:
+        #    version = self.version
+
+        # Construct base path
+        #base_path = resolve_path(f"models/{folder}/{self.model_name}/{version}/")
+        base_path=resolve_path(f"models/staging_models/production_model_retrain/20240711_11-09-23/")
+        
         return base_path
 
     def load_txt_utils(self):
-        nltk.download("punkt")
-        nltk.download("stopwords")
-        nltk.download("wordnet")
-        self.lemmatizer = WordNetLemmatizer()
-        self.stop_words = set(stopwords.words("french"))
+#        nltk.download("punkt")
+#        nltk.download("stopwords")
+#        nltk.download("wordnet")
+#        self.lemmatizer = WordNetLemmatizer()
+#        self.stop_words = set(stopwords.words("french"))
 
         model_path = self.get_model_path()
         with open(
