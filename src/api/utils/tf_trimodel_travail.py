@@ -67,7 +67,7 @@ class tf_trimodel:
         self.stop_words = set(stopwords.words("french"))
 
         model_path = self.get_model_path()
-        print(model_path)
+        #print(model_path)
         with open(
             os.path.join(model_path, "tokenizer_config.json"), "r", encoding="utf-8"
         ) as json_file:
@@ -132,8 +132,9 @@ class tf_trimodel:
         return int(self.mapper[str(pred)]), probability
 
     def agg_prediction(self, txt_prob, img_prob):
+        txt_prob=[np.array(x) for x in txt_prob]
         concatenate_proba = (
-            self.best_weights[0] * txt_prob + self.best_weights[1] * img_prob
+            self.best_weights[0] * np.array(txt_prob) + self.best_weights[1] * np.array(img_prob)
         )
         pred = np.argmax(concatenate_proba,axis=1)
         sortie = [int(self.mapper[str(x)]) for x in pred]
@@ -164,20 +165,32 @@ class tf_trimodel:
         return img_array
 
     def batch_predict(self,df):
-        df['description']=df['description']+df['designation']
+        #df=df[:100] ##### Dans un premier temps
+        df.loc[:,['description']]=df['description'].astype(str)+df['designation'].astype(str)
+        #df['description']=df.apply(lambda row : " ".join([row['description'],row['designation']]),axis=1)
+        #print(df['description'])
+        #print(df['designation'])
+        #print(df['description']+df['designation'])
+        #print(df.info())
+        #return
         df['description']=df['description'].apply(self.process_txt)
+        #return
         sequences = self.tokenizer.texts_to_sequences(df['description'])
         padded_sequences = pad_sequences(sequences, maxlen=10, padding="post", truncating="post")
         txt_prob = self.lstm.predict([padded_sequences])
         #print('coucou')
         #print(txt_prob)
-        images=df['image'].apply(lambda x : self.path_to_img(x))
-        img_array=images.apply(lambda x : self.process_img(x))
-        f_imgs = tf.convert_to_tensor(img_array.tolist(),dtype=tf.float32)
-        img_prob = self.vgg16.predict([f_imgs])
-        #print(img_prob)
-        
-        agg_pred = self.agg_prediction(txt_prob, img_prob)
+        vgg_result=[]
+        for i in range(0,len(df.index),100):
+            images=df[i:i+100]['image'].apply(lambda x : self.path_to_img(x))
+            img_array=images.apply(lambda x : self.process_img(x))
+            f_imgs = tf.convert_to_tensor(img_array.tolist(),dtype=tf.float32)
+            img_prob = self.vgg16.predict([f_imgs])
+            vgg_result.extend(list(img_prob))
+            #print(vgg_result)
+        #print(vgg_result)
+        #♦agg_pred = self.agg_prediction(txt_prob, img_prob)        
+        agg_pred = self.agg_prediction(txt_prob, vgg_result)
         return agg_pred
     
 

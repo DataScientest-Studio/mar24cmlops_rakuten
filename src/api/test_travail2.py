@@ -8,21 +8,6 @@ from dotenv import load_dotenv
 import os
 from datetime import datetime,timedelta
 
-
-
-#df=pd.DataFrame({'description':['film fantastique','tooneinstein'],
-#                'designation':['la momie','jeu video playstation cartouche'],
-#                'image':[resolve_path('data/preprocessed/image_train/image_550506_product_929938.jpg'),
-#                         resolve_path('data/preprocessed/image_train/image_234234_product_184251.jpg')]})
-
-#print(df.head())
-#print(df.info())
-
-#model = tf_trimodel(model_type='production', version='latest')
-#print('debut')
-#print(model.batch_predict(df))
-#print('repere')
-
 if __name__=="__main__":
     global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list, s3_conn
 
@@ -44,7 +29,8 @@ if __name__=="__main__":
     df=process_listing(X_pathway,Y_pathway)
     print(df.head())
     longueur=df.shape[0]
-    init_ind=int(longueur*3/10)
+    #init_ind=int(longueur*3/10)
+    init_ind=int(longueur/500) ####### en attendant
     init_date=datetime.strptime("2024-07-01","%Y-%m-%d")
     df.loc[0:init_ind,'validate_datetime']=init_date
     print(init_date)
@@ -55,8 +41,27 @@ if __name__=="__main__":
     dfr['image']=os.path.join(resolve_path('data/preprocessed/image_train'),'image_')+dfr['imageid'].astype(str)+'_product_'+dfr['productid'].astype(str)+'.jpg'
     print(dfr[['description','designation','image']])
     print(dfr.info())
-    #print(dfr['image'].tolist())
     model = tf_trimodel(model_type='production', version='latest')
     print('debut')
-    #print(model.batch_predict(dfr[['description','designation','image']]))
+    result=model.batch_predict(dfr[['description','designation','image']])
+    print(result)
     print('repere')
+    print(accuracy_score(result,dfr['user_prdtypecode']))
+    print(df['validate_datetime'].unique())
+    #print(sort(df['validate_datetime'].unique()))
+    print(df['validate_datetime'][:100])
+    for i_date in sorted(df['validate_datetime'].unique()):
+        dfri=df[df['validate_datetime']==i_date]
+        dfri['image']=os.path.join(resolve_path('data/preprocessed/image_train'),'image_')+dfri['imageid'].astype(str)+'_product_'+dfri['productid'].astype(str)+'.jpg'
+        #print(dfr[['description','designation','image']])
+        #print(dfr.info())
+        model = tf_trimodel(model_type='production', version='latest')
+        #print('debut')
+        result=model.batch_predict(dfri[['description','designation','image']])
+        #print(result)
+        #print('repere')
+        with open('estimation.txt','a') as file:
+            file.write(f"{i_date} : {accuracy_score(result,dfri['user_prdtypecode'])}\n")
+        print(i_date)
+        print(accuracy_score(result,dfri['user_prdtypecode']))
+    
