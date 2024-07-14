@@ -11,6 +11,7 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import load_model
 from api.utils.resolve_path import resolve_path
+from io import BytesIO
 
 # Chargement des données
 
@@ -40,17 +41,32 @@ text_model, image_model, combined_model = load_models()
 # Charger le tokenizer depuis le fichier tokenizer.pkl
 with open(os.path.join(base_path,'tokenizer.pkl'), 'rb') as handle:
     tokenizer = pickle.load(handle)
+    
+def path_to_img(image_path):
+    img = load_img(image_path, target_size=(224, 224))
+    img_array = img_to_array(img)
+    img_array = tf.keras.applications.vgg16.preprocess_input(np.expand_dims(img_array, axis=0))
+    return img_array
 
-def predict_single_data(text_designation, text_description, image_path):
+def byte_to_img(image_bytes):
+    img = load_img(BytesIO(image_bytes), target_size=(224, 224))
+    img_array = img_to_array(img)
+    img_array = tf.keras.applications.vgg16.preprocess_input(np.expand_dims(img_array, axis=0))
+    return img_array
+    
+def predict_single_data(text_designation, text_description, image):
     # Prétraitement du texte
     text = str(text_description) + " " + str(text_designation)
     sequence = tokenizer.texts_to_sequences([text])
     padded_sequence = pad_sequences(sequence, maxlen=100)
 
     # Chargement et prétraitement de l'image
-    img = load_img(image_path, target_size=(224, 224))
-    img_array = img_to_array(img)
-    img_array = tf.keras.applications.vgg16.preprocess_input(np.expand_dims(img_array, axis=0))
+    if isinstance(image, str):  # Si l'image est un chemin
+        img_array = path_to_img(image)
+    elif isinstance(image, bytes):  # Si l'image est en bytes
+        img_array = byte_to_img(image)
+    else:
+        raise ValueError("Image must be a file path or bytes.")
 
     # Prédiction avec le modèle combiné
     text_pred, image_pred, combined_pred = None, None, None

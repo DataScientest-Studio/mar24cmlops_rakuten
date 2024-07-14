@@ -59,9 +59,11 @@ num_classes = len(np.unique(labels))
 labels = to_categorical(labels, num_classes=num_classes)
 
 # Sauvegarde du mapping des modalités
-modalite_mapping_str_keys = {str(key): value for key, value in modalite_mapping.items()}
-with open(os.path.join(base_path,'modalite_mapping.json'), 'w') as json_file:
-    json.dump(modalite_mapping_str_keys, json_file)
+# modalite_mapping_str_keys = {str(key): value for key, value in modalite_mapping.items()}
+# with open(os.path.join(base_path,'modalite_mapping.json'), 'w') as json_file:
+#     json.dump(modalite_mapping_str_keys, json_file)
+with open(os.path.join(base_path,'modalite_mapping.pkl'), 'wb') as pickle_file:
+    pickle.dump(modalite_mapping, pickle_file)
 
 # Diviser les données en ensembles d'entraînement et de test
 X_train_texts, X_test_texts, X_train_images, X_test_images, y_train, y_test = train_test_split(
