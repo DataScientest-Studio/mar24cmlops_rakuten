@@ -3,7 +3,7 @@ from api.utils.resolve_path import resolve_path
 from api.utils.get_models import get_model_latest_version
 
 
-def predict_from_list_models(models, designation, image_path):
+def predict_from_list_models(models, description, designation, image_path):
     """
     Generate predictions from a list of models for a given designation and image.
 
@@ -17,7 +17,7 @@ def predict_from_list_models(models, designation, image_path):
     """
     predictions = {}
     for i, model in enumerate(models, start=1):
-        pred = model.predict(designation, image_path)
+        pred = model.predict(description, designation, image_path)
         predictions[f"{model.model_name}_{model.version}_{model.model_type}"] = pred
     return predictions
 

@@ -346,7 +346,7 @@ async def listing_submit(
         image_file.write(listing.image.file.read())
 
     # Predict using the loaded models
-    pred = predict_from_list_models(mdl_list, listing.designation, image_path)
+    pred = predict_from_list_models(mdl_list, listing.description, listing.designation, image_path)
     # Convert prediction dictionary to a JSON string
     pred_json = json.dumps(pred)
 
@@ -447,14 +447,14 @@ async def predict_listing(
         dict: Response containing the message indicating success or failure.
     """
     cursor = conn.execute(
-        f"SELECT designation, productid, imageid FROM fact_listings WHERE listing_id = {listing_id}"
+        f"SELECT description, designation, productid, imageid FROM fact_listings WHERE listing_id = {listing_id}"
     )
     result = cursor.fetchone()
 
     if not result:
         raise HTTPException(status_code=404, detail="Listing not found")
 
-    designation, productid, imageid = result[0], result[1], result[2]
+    description, designation, productid, imageid = result[0], result[1], result[2], result[3]
     image_path = resolve_path(
         f"data/images/submitted_images/image_{imageid}_product_{productid}.jpg"
     )
@@ -474,7 +474,7 @@ async def predict_listing(
                 detail=f"An error occurred while downloading from S3: {e}",
             )
 
-    pred = predict_from_list_models(mdl_list, designation, image_path)
+    pred = predict_from_list_models(mdl_list, description, designation, image_path)
 
     # Construct and return the response
     response = {
