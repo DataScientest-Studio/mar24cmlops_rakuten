@@ -15,11 +15,10 @@ dependencies = [
     "passlib>=1.7.4",
     "pyjwt>=2.8.0",
     "nltk>=3.8.1",
-    "tensorflow>=2.16.2",
     "pillow>=10.4.0",
     "scikit-learn>=1.5.1",
-    "torch>=2.3.1",
-    "torchvision>=0.18.1",
+    "tensorflow[and-cuda]>=2.17.0",
+    "scipy>=1.14.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
