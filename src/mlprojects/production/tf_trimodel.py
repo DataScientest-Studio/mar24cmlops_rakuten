@@ -92,6 +92,7 @@ class tf_trimodel:
             modalite_mapping = pickle.load(handle)
         
         self.modalite_mapping = modalite_mapping
+        self.inv_modalite_mapping = {value: key for key, value in modalite_mapping.items()}
         
         self.combined_model = load_model(os.path.join(model_path,'combined_model.keras'))
 
@@ -121,7 +122,7 @@ class tf_trimodel:
         img = load_img(BytesIO(file), target_size=(224, 224, 3))
         return img
 
-    def predict(self,text_designation, text_description, image):
+    def _predict(self,text_designation, text_description, image):
         # Prétraitement du texte
         text = str(text_description) + " " + str(text_designation)
         sequence = self.tokenizer.texts_to_sequences([text])
@@ -167,7 +168,7 @@ class tf_trimodel:
             }
         }
 
-    def predict_from_dataframe(self,df):
+    def _predict_from_dataframe(self,df):
         predictions = []
 
         for index, row in df.iterrows():
@@ -185,6 +186,11 @@ class tf_trimodel:
 
         return predictions
     
+    def predict(self,text_designation, text_description, image):
+        result = self._predict(text_designation, text_description, image)
+        result = result['combined_prediction']['class']
+        result = self.inv_modalite_mapping[result]
+        return result
 
     # def agg_prediction(self, txt_prob, img_prob):
     #     """

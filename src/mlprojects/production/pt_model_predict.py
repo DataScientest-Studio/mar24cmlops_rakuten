@@ -129,7 +129,4 @@ print(result['combined_prediction']['class'])
 # Exemple d'utilisation avec un DataFrame
 df = listing_df.iloc[0:2]
 results = predict_from_dataframe(df)
-for result in results:
-    print(f"Designation: {result['text_designation']}, Description: {result['text_description']}")
-    print(result)
-    print("----------------------------------------------")
+print(pd.DataFrame(results))
