@@ -1,14 +1,10 @@
 import os
-import json
 import pickle
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
-from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import load_model
 from api.utils.resolve_path import resolve_path
 from io import BytesIO

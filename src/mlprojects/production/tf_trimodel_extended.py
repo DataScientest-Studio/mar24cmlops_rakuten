@@ -23,7 +23,7 @@ class tf_trimodel_extended(tf_trimodel):
         """
         super().__init__(model_name, version, model_type)
         
-    def retrain_model(self, new_text_data, new_image_data, new_labels, epochs=10, batch_size=32):
+    def train_model(self, new_text_data, new_image_data, new_labels, epochs=10, batch_size=32):
         """
         Retrain the models with new data.
         

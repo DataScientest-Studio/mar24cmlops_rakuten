@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
-from api.fastapi_main import app, lifespan
-import pytest
+from api.fastapi_main import app
 from api.utils.resolve_path import resolve_path
 
 def test_api():
