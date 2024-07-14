@@ -10,7 +10,7 @@ from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 from api.utils.resolve_path import resolve_path
 from mlprojects.production.tf_trimodel import tf_trimodel
-
+import pandas as pd
 
 class tf_trimodel_extended(tf_trimodel):
     """
@@ -118,14 +118,20 @@ class tf_trimodel_extended(tf_trimodel):
             epochs (int): Number of epochs for retraining.
             batch_size (int): Batch size for retraining.
         """
+        print(self.retrained_base_path)
         self.is_retrained = True
         self.retrained_version = datetime.now().strftime("%Y%m%d_%H-%M-%S")
         self.retrained_base_path = os.path.join(
-            self.retrained_base_path, f"/{self.retrained_version}/"
+            self.retrained_base_path, self.retrained_version
         )
-
+        
+        # Create the directory if it does not exist
+        os.makedirs(self.retrained_base_path, exist_ok=True)
+        
+        print(self.retrained_base_path)
         # Update tokenizer with new text data
-        self.new_tokenizer = self.tokenizer.fit_on_texts(
+        self.new_tokenizer = tf.keras.preprocessing.text.Tokenizer()
+        self.new_tokenizer.fit_on_texts(
             (new_df["description"] + " " + new_df["designation"]).astype(str)
         )
 
@@ -200,3 +206,16 @@ class tf_trimodel_extended(tf_trimodel):
         combined_model.save(
             os.path.join(self.retrained_base_path, "combined_model.keras")
         )
+
+# Exemple d'utilisation
+X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
+Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
+listing_df = X_train.join(Y_train)
+
+listing_df = listing_df.sample(5000)
+
+# Initialiser l'extension du modèle
+extended_model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
+
+# Réentraîner le modèle avec les nouvelles données
+extended_model.train_model(listing_df)
