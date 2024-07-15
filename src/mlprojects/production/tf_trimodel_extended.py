@@ -38,9 +38,9 @@ class tf_trimodel_extended(tf_trimodel):
         self.num_listings = 5000
         self.batch_size = 32
 
-    def upload_model_to_repository_from_class(self, cfg_path):
+    def upload_retrained_model_to_repository(self, cfg_path):
         """
-        Upload the trained models to the S3 repository.
+        Upload the retrained models to the S3 repository.
 
         Args:
             cfg_path (str): The path to the AWS configuration file.
@@ -308,19 +308,31 @@ class tf_trimodel_extended(tf_trimodel):
                 mlflow.end_run()
 
 
-# Exemple d'utilisation
+# # Exemple d'utilisation
 # import pandas as pd
+# from dotenv import load_dotenv
+
 # X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
 # Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
 # listing_df = X_train.join(Y_train)
+# listing_df = listing_df.sample(100)
 
-# listing_df = listing_df.sample(5000)
-
-# # Initialiser l'extension du modèle
+# # # Initialiser l'extension du modèle
 # extended_model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
 
-# # Réentraîner le modèle avec les nouvelles données
+# # # Réentraîner le modèle avec les nouvelles données
 # extended_model.train_model(listing_df)
+# env_path = resolve_path(".envp/.env.development")
+# load_dotenv(env_path)
+
+# # Convert paths to absolute paths
+# aws_config_path = resolve_path(os.environ["AWS_CONFIG_PATH"])
+# extended_model.upload_retrained_model_to_repository(resolve_path(aws_config_path))
+
+
+####################################################
+####################################################
+
 
 # Autre exemple de batch predict
 # import pandas as pd
