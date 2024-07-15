@@ -11,6 +11,8 @@ import mlflow
 import mlflow.tensorflow
 from api.utils.resolve_path import resolve_path
 from mlprojects.production.tf_trimodel import tf_trimodel
+from api.utils.get_models import upload_model_to_repository
+
 
 class tf_trimodel_extended(tf_trimodel):
     """
@@ -35,6 +37,35 @@ class tf_trimodel_extended(tf_trimodel):
         self.num_epochs = 15
         self.num_listings = 5000
         self.batch_size = 32
+
+    def upload_model_to_repository_from_class(self, cfg_path):
+        """
+        Upload the trained models to the S3 repository.
+
+        Args:
+            cfg_path (str): The path to the AWS configuration file.
+        """
+        if not self.is_retrained:
+            print("No model has been retrained. Skipping upload to S3.")
+            return
+
+        try:
+            # Determine the local model folder path
+            local_model_folder = resolve_path(self.retrained_base_path)
+
+            # Upload to S3 staging directory
+            s3_folder_prefix = upload_model_to_repository(
+                cfg_path,
+                local_model_folder,
+                self.model_name,
+                is_production=False,
+                version=self.retrained_version,
+            )
+
+            print(f"Uploaded trained models to S3: {s3_folder_prefix}")
+
+        except Exception as e:
+            print(f"Failed to upload models to S3: {e}")
 
     def load_and_preprocess_image(self, path):
         img = load_img(path, target_size=(224, 224))
@@ -169,7 +200,7 @@ class tf_trimodel_extended(tf_trimodel):
             if mlflow_active:
                 mlflow.log_param("num_epochs", self.num_epochs)
                 mlflow.log_param("batch_size", self.batch_size)
-                
+
             text_model = self.create_text_model(num_classes)
             text_model.compile(
                 optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
@@ -184,15 +215,19 @@ class tf_trimodel_extended(tf_trimodel):
 
             if mlflow_active:
                 # Log text model metrics
-                mlflow.log_metrics({
-                    "text_train_accuracy": history_text.history['accuracy'][-1],
-                    "text_val_accuracy": history_text.history['val_accuracy'][-1],
-                    "text_train_loss": history_text.history['loss'][-1],
-                    "text_val_loss": history_text.history['val_loss'][-1]
-                })
+                mlflow.log_metrics(
+                    {
+                        "text_train_accuracy": history_text.history["accuracy"][-1],
+                        "text_val_accuracy": history_text.history["val_accuracy"][-1],
+                        "text_train_loss": history_text.history["loss"][-1],
+                        "text_val_loss": history_text.history["val_loss"][-1],
+                    }
+                )
 
                 # Sauvegarder le modèle textuel
-                text_model_path = os.path.join(self.retrained_base_path, "text_model.keras")
+                text_model_path = os.path.join(
+                    self.retrained_base_path, "text_model.keras"
+                )
                 text_model.save(text_model_path)
                 mlflow.keras.log_model(text_model, "text_model")
 
@@ -210,15 +245,19 @@ class tf_trimodel_extended(tf_trimodel):
 
             if mlflow_active:
                 # Log image model metrics
-                mlflow.log_metrics({
-                    "image_train_accuracy": history_image.history['accuracy'][-1],
-                    "image_val_accuracy": history_image.history['val_accuracy'][-1],
-                    "image_train_loss": history_image.history['loss'][-1],
-                    "image_val_loss": history_image.history['val_loss'][-1]
-                })
+                mlflow.log_metrics(
+                    {
+                        "image_train_accuracy": history_image.history["accuracy"][-1],
+                        "image_val_accuracy": history_image.history["val_accuracy"][-1],
+                        "image_train_loss": history_image.history["loss"][-1],
+                        "image_val_loss": history_image.history["val_loss"][-1],
+                    }
+                )
 
                 # Sauvegarder le modèle d'image
-                image_model_path = os.path.join(self.retrained_base_path, "image_model.keras")
+                image_model_path = os.path.join(
+                    self.retrained_base_path, "image_model.keras"
+                )
                 image_model.save(image_model_path)
                 mlflow.keras.log_model(image_model, "image_model")
 
@@ -242,15 +281,23 @@ class tf_trimodel_extended(tf_trimodel):
 
             if mlflow_active:
                 # Log combined model metrics
-                mlflow.log_metrics({
-                    "combined_train_accuracy": history_combined.history['accuracy'][-1],
-                    "combined_val_accuracy": history_combined.history['val_accuracy'][-1],
-                    "combined_train_loss": history_combined.history['loss'][-1],
-                    "combined_val_loss": history_combined.history['val_loss'][-1]
-                })
+                mlflow.log_metrics(
+                    {
+                        "combined_train_accuracy": history_combined.history["accuracy"][
+                            -1
+                        ],
+                        "combined_val_accuracy": history_combined.history[
+                            "val_accuracy"
+                        ][-1],
+                        "combined_train_loss": history_combined.history["loss"][-1],
+                        "combined_val_loss": history_combined.history["val_loss"][-1],
+                    }
+                )
 
                 # Sauvegarder le modèle combiné
-                combined_model_path = os.path.join(self.retrained_base_path, "combined_model.keras")
+                combined_model_path = os.path.join(
+                    self.retrained_base_path, "combined_model.keras"
+                )
                 combined_model.save(combined_model_path)
                 mlflow.keras.log_model(combined_model, "combined_model")
 
@@ -260,19 +307,20 @@ class tf_trimodel_extended(tf_trimodel):
             if mlflow_active:
                 mlflow.end_run()
 
+
 # Exemple d'utilisation
-import pandas as pd
-X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
-Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
-listing_df = X_train.join(Y_train)
+# import pandas as pd
+# X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
+# Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
+# listing_df = X_train.join(Y_train)
 
-listing_df = listing_df.sample(5000)
+# listing_df = listing_df.sample(5000)
 
-# Initialiser l'extension du modèle
-extended_model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
+# # Initialiser l'extension du modèle
+# extended_model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
 
-# Réentraîner le modèle avec les nouvelles données
-extended_model.train_model(listing_df)
+# # Réentraîner le modèle avec les nouvelles données
+# extended_model.train_model(listing_df)
 
 # Autre exemple de batch predict
 # import pandas as pd
