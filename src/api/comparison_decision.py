@@ -18,7 +18,7 @@ def spurious(results):
 def slope(results):
         y_results=results
         x_ref=np.arange(0,len(results),1)
-        return np.cov(x_ref,y_results)[1][0]/np.std(x_ref)
+        return np.cov(x_ref,y_results)[1][0]/np.var(x_ref)
 
 def st_deviation(results):
     return np.std(np.array(results))
