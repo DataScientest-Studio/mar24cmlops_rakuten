@@ -204,12 +204,30 @@ def init_db(duckdb_path, is_test=False):
     model_prdtypecode_to_varchar_sql = "ALTER TABLE fact_listings ALTER COLUMN model_prdtypecode SET DATA TYPE VARCHAR;"
     duckdb_conn.execute(model_prdtypecode_to_varchar_sql)
 
+
+
 # # Load environment variables from .env file
 # from dotenv import load_dotenv
 # from api.utils.resolve_path import resolve_path
+# from mlprojects.production.tf_trimodel_extended import tf_trimodel_extended
+# from api.utils.predict import predict_from_model_and_df
 
+# # Example usage:
 # env_path = resolve_path(".envp/.env.development")
 # load_dotenv(env_path)
-# listing_df = process_listing(resolve_path('data/X_train.csv'),resolve_path('data/Y_train.csv'))
 
-# print(listing_df.head())
+# listing_df = process_listing(resolve_path('data/X_train.csv'), resolve_path('data/Y_train.csv'))
+# listing_df["image_path"] = listing_df.apply(
+#     lambda row: resolve_path(
+#         f"data/images/image_train/image_{row['imageid']}_product_{row['productid']}.jpg"
+#     ),
+#     axis=1,
+# )
+
+# to_predict = listing_df.head(10)
+
+# model = tf_trimodel_extended("tf_trimodel", "20240715_08-30-38", "staging")
+
+# predicted_df = predict_from_model_and_df(model, to_predict)
+
+# print(predicted_df)

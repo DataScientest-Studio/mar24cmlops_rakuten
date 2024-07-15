@@ -194,7 +194,22 @@ class tf_trimodel:
             )
 
         return predictions
+    
+    def _predict_from_dataframe_concatenate(self, df):
+        predictions = []
 
+        for index, row in df.iterrows():
+            text_designation = row["designation"]
+            text_description = row["description"]
+            image_path = row["image_path"]
+
+            prediction_result = self.predict(
+                text_designation, text_description, image_path
+            )
+            predictions.append(prediction_result)
+
+        return predictions
+    
     def predict(self, text_designation, text_description, image):
         result = self._predict(text_designation, text_description, image)
         combined_class = result["combined_prediction"]["class"]
