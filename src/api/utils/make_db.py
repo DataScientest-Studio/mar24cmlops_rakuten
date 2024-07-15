@@ -211,7 +211,7 @@ def init_db(duckdb_path, is_test=False):
 # from api.utils.resolve_path import resolve_path
 # from mlprojects.production.tf_trimodel_extended import tf_trimodel_extended
 # from api.utils.predict import predict_from_model_and_df
-
+# from api.utils.metrics import accuracy_from_df
 # # Example usage:
 # env_path = resolve_path(".envp/.env.development")
 # load_dotenv(env_path)
@@ -231,3 +231,6 @@ def init_db(duckdb_path, is_test=False):
 # predicted_df = predict_from_model_and_df(model, to_predict)
 
 # print(predicted_df)
+
+# acc = accuracy_from_df(predicted_df, 'tf_trimodel_20240715_08-30-38_staging', 'user_prdtypecode')
+# print(acc)
