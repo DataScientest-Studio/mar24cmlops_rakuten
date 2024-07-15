@@ -7,6 +7,8 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
+import mlflow
+import mlflow.tensorflow
 from api.utils.resolve_path import resolve_path
 from mlprojects.production.tf_trimodel import tf_trimodel
 
@@ -153,72 +155,109 @@ class tf_trimodel_extended(tf_trimodel):
             )
         )
 
-        text_model = self.create_text_model(num_classes)
-        text_model.compile(
-            optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
-        )
-        text_model.fit(
-            X_train_texts,
-            y_train,
-            epochs=self.num_epochs,
-            batch_size=self.batch_size,
-            validation_data=(X_test_texts, y_test),
-        )
+        # Initialize MLflow
+        mlflow.set_tracking_uri("http://localhost:5000")
+        mlflow.set_experiment(self.model_name)
 
-        # Sauvegarder le modèle textuel
-        text_model.save(os.path.join(self.retrained_base_path, "text_model.keras"))
+        with mlflow.start_run():
+            mlflow.log_param("num_epochs", self.num_epochs)
+            mlflow.log_param("batch_size", self.batch_size)
+            
+            text_model = self.create_text_model(num_classes)
+            text_model.compile(
+                optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+            )
+            history_text = text_model.fit(
+                X_train_texts,
+                y_train,
+                epochs=self.num_epochs,
+                batch_size=self.batch_size,
+                validation_data=(X_test_texts, y_test),
+            )
 
-        image_model = self.create_image_model(num_classes)
-        image_model.compile(
-            optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
-        )
-        image_model.fit(
-            X_train_images,
-            y_train,
-            epochs=self.num_epochs,
-            batch_size=self.batch_size,
-            validation_data=(X_test_images, y_test),
-        )
+            # Log text model metrics
+            mlflow.log_metrics({
+                "text_train_accuracy": history_text.history['accuracy'][-1],
+                "text_val_accuracy": history_text.history['val_accuracy'][-1],
+                "text_train_loss": history_text.history['loss'][-1],
+                "text_val_loss": history_text.history['val_loss'][-1]
+            })
 
-        # Sauvegarder le modèle d'image
-        image_model.save(os.path.join(self.retrained_base_path, "image_model.keras"))
+            # Sauvegarder le modèle textuel
+            text_model_path = os.path.join(self.retrained_base_path, "text_model.keras")
+            text_model.save(text_model_path)
+            mlflow.keras.log_model(text_model, "text_model")
 
-        # Désactiver l'entraînement pour les modèles préentraînés
-        text_model.trainable = False
-        image_model.trainable = False
+            image_model = self.create_image_model(num_classes)
+            image_model.compile(
+                optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+            )
+            history_image = image_model.fit(
+                X_train_images,
+                y_train,
+                epochs=self.num_epochs,
+                batch_size=self.batch_size,
+                validation_data=(X_test_images, y_test),
+            )
 
-        combined_model = self.create_combined_model(
-            num_classes, text_model, image_model
-        )
-        combined_model.compile(
-            optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
-        )
-        combined_model.fit(
-            [X_train_texts, X_train_images],
-            y_train,
-            epochs=self.num_epochs,
-            batch_size=self.batch_size,
-            validation_data=([X_test_texts, X_test_images], y_test),
-        )
+            # Log image model metrics
+            mlflow.log_metrics({
+                "image_train_accuracy": history_image.history['accuracy'][-1],
+                "image_val_accuracy": history_image.history['val_accuracy'][-1],
+                "image_train_loss": history_image.history['loss'][-1],
+                "image_val_loss": history_image.history['val_loss'][-1]
+            })
 
-        # Sauvegarder le modèle combiné
-        combined_model.save(
-            os.path.join(self.retrained_base_path, "combined_model.keras")
-        )
+            # Sauvegarder le modèle d'image
+            image_model_path = os.path.join(self.retrained_base_path, "image_model.keras")
+            image_model.save(image_model_path)
+            mlflow.keras.log_model(image_model, "image_model")
+
+            # Désactiver l'entraînement pour les modèles préentraînés
+            text_model.trainable = False
+            image_model.trainable = False
+
+            combined_model = self.create_combined_model(
+                num_classes, text_model, image_model
+            )
+            combined_model.compile(
+                optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+            )
+            history_combined = combined_model.fit(
+                [X_train_texts, X_train_images],
+                y_train,
+                epochs=self.num_epochs,
+                batch_size=self.batch_size,
+                validation_data=([X_test_texts, X_test_images], y_test),
+            )
+
+            # Log combined model metrics
+            mlflow.log_metrics({
+                "combined_train_accuracy": history_combined.history['accuracy'][-1],
+                "combined_val_accuracy": history_combined.history['val_accuracy'][-1],
+                "combined_train_loss": history_combined.history['loss'][-1],
+                "combined_val_loss": history_combined.history['val_loss'][-1]
+            })
+
+            # Sauvegarder le modèle combiné
+            combined_model_path = os.path.join(self.retrained_base_path, "combined_model.keras")
+            combined_model.save(combined_model_path)
+            mlflow.keras.log_model(combined_model, "combined_model")
 
 
-# # Exemple d'utilisation
-# X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
-# Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
-# listing_df = X_train.join(Y_train)
+# Exemple d'utilisation
+import pandas as pd
+X_train = pd.read_csv(resolve_path("data/X_train.csv"), index_col=0)
+Y_train = pd.read_csv(resolve_path("data/Y_train.csv"), index_col=0)
+listing_df = X_train.join(Y_train)
 
-# listing_df = listing_df.sample(5000)
+listing_df = listing_df.sample(5000)
 
-# # Initialiser l'extension du modèle
-# extended_model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
+# Initialiser l'extension du modèle
+extended_model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
 
-# # Réentraîner le modèle avec les nouvelles données
-# extended_model.train_model(listing_df)
+# Réentraîner le modèle avec les nouvelles données
+extended_model.train_model(listing_df)
 
 
 # Autre exemple de batch predict

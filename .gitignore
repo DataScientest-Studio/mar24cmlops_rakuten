@@ -136,3 +136,5 @@ data/rakuten_db.duckdb.wal
 !data/zazie.jpg
 
 data/test_model/*
+
+**/mlruns/
