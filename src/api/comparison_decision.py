@@ -28,7 +28,8 @@ def execute():
     if len(results)>15: # sans intérêt si pas assez de données
         if st_deviation(results)>0.05:
             return True
-        if np.abs((slope(results[-5:]-slope(results[:-5]))/slope(results[:-5])))>0.05 : # 5% d'écart
+        #if np.abs((slope(results[-5:]-slope(results[:-5]))/slope(results[:-5])))>0.05 : # 5% d'écart
+        if slope(results[-5:])<-0.05:
             return True
         if spurious(results):
             return True

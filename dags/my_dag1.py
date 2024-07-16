@@ -1,13 +1,13 @@
-from mlflow import DAG
+from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.operators.python import PythonOperator, BranchPythonOperator
-from api.utils.resolve_path import resolve_path
+from airflow.operators.bash import BashOperator
 
 with DAG(
     dag_id = 'dag1',
     description = 'test_dag',
     tags=['tutorial'],
-    schedule_interval=None,
+    schedule_interval='* * * * *',
     default_args = {
         'owner': 'airflow',
         'start_date': days_ago(0),
@@ -19,7 +19,7 @@ with DAG(
         print('coucou')
         
     task1=PythonOperator(
-        rask_id='task1',
+        task_id='task1',
         python_callable=essai
     )
     
