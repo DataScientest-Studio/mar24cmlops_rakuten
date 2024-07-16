@@ -54,9 +54,22 @@ with DAG(
             f"SELECT {columns_str} FROM fact_listings WHERE validate_datetime >= DATETIME '2024-07-17' AND validate_datetime <= DATETIME '2024-07-18'"
         ).df()
         
-        print(result.shape)
+        result["image_path"] = result.apply(
+            lambda row: resolve_path(
+                f"data/images/image_train/image_{row['imageid']}_product_{row['productid']}.jpg"
+            ),
+            axis=1,
+        )
+        model = tf_trimodel_extended("tf_trimodel", "20240708_19-15-54", "production")
+
+        result = predict_from_model_and_df(model, result)
+
         print(result)
 
+        acc = accuracy_from_df(result, 'tf_trimodel_20240708_19-15-54_production', 'user_prdtypecode')
+        
+        print(acc)
+        
         # print(os.environ["AWS_CONFIG_PATH"])
         # print(os.getcwd())
         # print(resolve_path(os.getcwd()))
