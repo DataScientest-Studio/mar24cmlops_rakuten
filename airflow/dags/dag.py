@@ -25,7 +25,6 @@ with DAG(
 ) as my_dag:
     # Définition de la fonction à exécuter
     def print_date_and_hello():
-        
         load_dotenv(".envp/.env.airflow")
         print("load_dotenv done")
 
@@ -33,8 +32,9 @@ with DAG(
             resolve_path(os.environ["DATA_PATH"]),
             os.environ["RAKUTEN_DB_NAME"].lstrip("/"),
         )
-        
-        conn = duckdb.connect(database=duckdb_path, read_only=True, check_same_thread = False)
+
+        conn = duckdb.connect(
+            database=duckdb_path, read_only=True)
 
         cols = [
             "designation",
@@ -47,13 +47,13 @@ with DAG(
             "validate_datetime",
             "status",
             "user",
-            "imageid"
-            ]
+            "imageid",
+        ]
         columns_str = ", ".join(cols)
         result = conn.sql(
             f"SELECT {columns_str} FROM fact_listings WHERE validate_datetime >= DATETIME '2024-07-17' AND validate_datetime <= DATETIME '2024-07-18'"
         ).df()
-        
+
         result["image_path"] = result.apply(
             lambda row: resolve_path(
                 f"data/images/image_train/image_{row['imageid']}_product_{row['productid']}.jpg"
@@ -66,10 +66,12 @@ with DAG(
 
         print(result)
 
-        acc = accuracy_from_df(result, 'tf_trimodel_20240708_19-15-54_production', 'user_prdtypecode')
-        
+        acc = accuracy_from_df(
+            result, "tf_trimodel_20240708_19-15-54_production", "user_prdtypecode"
+        )
+
         print(acc)
-        
+
         # print(os.environ["AWS_CONFIG_PATH"])
         # print(os.getcwd())
         # print(resolve_path(os.getcwd()))
