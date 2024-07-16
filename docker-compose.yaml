@@ -49,8 +49,10 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.9.2}
-  # build: .
+  # image: ${AIRFLOW_IMAGE_NAME:-extending_airflow:latest}
+  build: 
+    context: .
+    dockerfile: Dockerfile.airflow
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -87,27 +89,27 @@ x-airflow-common:
 
 services:
 
-  fastapi:
-    build:
-      context: . # Peut etre modifié en ./api si jamais 
-      dockerfile: Dockerfile.api
-    ports:
-      - "8001:8001"
-    volumes:
-      - ./data:/app/data
-      - ./models:/app/models
-      - ./logs:/app/logs
+  # fastapi:
+  #   build:
+  #     context: . # Peut etre modifié en ./api si jamais 
+  #     dockerfile: Dockerfile.api
+  #   ports:
+  #     - "8001:8001"
+  #   volumes:
+  #     - ./data:/app/data
+  #     - ./models:/app/models
+  #     - ./logs:/app/logs
 
-  mlflow:
-    build:
-      context: .  # Peut etre modifié en ./mlflow si jamais 
-      dockerfile: Dockerfile.mlflow
-    ports:
-      - "5000:5000"
-    environment:
-      MLFLOW_TRACKING_URI: http://mlflow:5000
-    volumes:
-      - ./mlflow:/mlflow
+  # mlflow:
+  #   build:
+  #     context: .  # Peut etre modifié en ./mlflow si jamais 
+  #     dockerfile: Dockerfile.mlflow
+  #   ports:
+  #     - "5000:5000"
+  #   environment:
+  #     MLFLOW_TRACKING_URI: http://mlflow:5000
+  #   volumes:
+  #     - ./mlflow:/mlflow
 
   postgres:
     image: postgres:13

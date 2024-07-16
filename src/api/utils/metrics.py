@@ -12,8 +12,8 @@ def accuracy_from_df(df, prediction_col, true_col):
     """
     # Compare the predictions with the true categories
     correct_predictions = df[prediction_col] == df[true_col]
-    
+
     # Calculate the accuracy
     accuracy = correct_predictions.mean()
-    
+
     return accuracy

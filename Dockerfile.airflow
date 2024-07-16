@@ -1,0 +1,14 @@
+FROM apache/airflow:2.9.2-python3.10
+
+USER root
+RUN apt-get update 
+USER airflow
+COPY requirements.txt /
+RUN pip install --no-cache-dir "apache-airflow==${AIRFLOW_VERSION}" -r /requirements.txt
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the project files to the working directory
+COPY . .
+RUN python -m pip install -e ./src

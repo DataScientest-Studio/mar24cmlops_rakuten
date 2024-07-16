@@ -22,7 +22,7 @@ dependencies = [
     "mlflow>=2.14.3",
     "apache-airflow==2.9.2",
 ]
-readme = "README.md"
+
 requires-python = ">= 3.8"
 
 [build-system]
@@ -40,4 +40,4 @@ dev-dependencies = [
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mar24cmlops_rakuten"]
+packages = ["./mlprojects", "./api","./test_api"]

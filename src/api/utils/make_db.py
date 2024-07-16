@@ -1,12 +1,12 @@
 import duckdb
 import pandas as pd
 from api.utils.s3_utils import create_s3_conn_from_creds, download_from_s3, upload_to_s3
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 import os
 from passlib.hash import bcrypt
 from api.utils.resolve_path import resolve_path
-from datetime import datetime, timedelta
+
 
 def process_listing(listing_csv_path, prdtypecode_csv_path):
     """
@@ -37,7 +37,7 @@ def process_listing(listing_csv_path, prdtypecode_csv_path):
 
     listing_df["listing_id"] = listing_df.index
     listing_df = listing_df.join(prdtypecode_df, how="left")
-    
+
     # Function to generate random timedelta within constraints
     def generate_random_timedelta():
         max_days = 365
@@ -51,10 +51,14 @@ def process_listing(listing_csv_path, prdtypecode_csv_path):
         return timedelta(days=random_days, hours=random_hours, minutes=random_minutes)
 
     # Apply random timedelta generation using lambda function and apply
-    listing_df["waiting_timedelta"] = listing_df.apply(lambda row: generate_random_timedelta(), axis=1)
+    listing_df["waiting_timedelta"] = listing_df.apply(
+        lambda row: generate_random_timedelta(), axis=1
+    )
     listing_df["waiting_datetime"] = datetime.now() + listing_df["waiting_timedelta"]
-    listing_df["validate_datetime"] = listing_df["waiting_datetime"] + timedelta(minutes=np.random.randint(1, 16))
-    
+    listing_df["validate_datetime"] = listing_df["waiting_datetime"] + timedelta(
+        minutes=np.random.randint(1, 16)
+    )
+
     listing_df["status"] = "validate"
     listing_df["user"] = "init_user"
     listing_df = listing_df.rename(columns={"prdtypecode": "user_prdtypecode"})
@@ -203,7 +207,6 @@ def init_db(duckdb_path, is_test=False):
 
     model_prdtypecode_to_varchar_sql = "ALTER TABLE fact_listings ALTER COLUMN model_prdtypecode SET DATA TYPE VARCHAR;"
     duckdb_conn.execute(model_prdtypecode_to_varchar_sql)
-
 
 
 # # Load environment variables from .env file

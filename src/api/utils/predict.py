@@ -90,6 +90,7 @@ def load_models_from_file(cfg_path, model_list_file):
 
     return models
 
+
 def predict_from_model_and_df(model, df):
     """
     Makes predictions from a model and updates the DataFrame with the prediction results.
@@ -103,14 +104,15 @@ def predict_from_model_and_df(model, df):
     """
     # Perform predictions
     result = model._predict_from_dataframe_concatenate(df)
-    
+
     # Create the column name from the model's attributes
-    colname = f'{model.model_name}_{model.version}_{model.model_type}'
-    
+    colname = f"{model.model_name}_{model.version}_{model.model_type}"
+
     # Add the prediction results to the DataFrame
     df[colname] = result
-    
+
     return df
+
 
 # load_dotenv(resolve_path('.env/.env.development'))
 # aws_config_path = resolve_path(os.environ['AWS_CONFIG_PATH'])

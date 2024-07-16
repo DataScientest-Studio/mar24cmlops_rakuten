@@ -194,7 +194,7 @@ class tf_trimodel:
             )
 
         return predictions
-    
+
     def _predict_from_dataframe_concatenate(self, df):
         predictions = []
 
@@ -209,7 +209,7 @@ class tf_trimodel:
             predictions.append(prediction_result)
 
         return predictions
-    
+
     def predict(self, text_designation, text_description, image):
         result = self._predict(text_designation, text_description, image)
         combined_class = result["combined_prediction"]["class"]
