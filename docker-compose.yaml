@@ -91,27 +91,27 @@ x-airflow-common:
 
 services:
 
-  # fastapi:
-  #   build:
-  #     context: . # Peut etre modifié en ./api si jamais 
-  #     dockerfile: Dockerfile.api
-  #   ports:
-  #     - "8001:8001"
-  #   volumes:
-  #     - ./data:/app/data
-  #     - ./models:/app/models
-  #     - ./logs:/app/logs
+  fastapi:
+    build:
+      context: . # Peut etre modifié en ./api si jamais 
+      dockerfile: Dockerfile.api
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
 
-  # mlflow:
-  #   build:
-  #     context: .  # Peut etre modifié en ./mlflow si jamais 
-  #     dockerfile: Dockerfile.mlflow
-  #   ports:
-  #     - "5000:5000"
-  #   environment:
-  #     MLFLOW_TRACKING_URI: http://mlflow:5000
-  #   volumes:
-  #     - ./mlflow:/mlflow
+  mlflow:
+    build:
+      context: .  # Peut etre modifié en ./mlflow si jamais 
+      dockerfile: Dockerfile.mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./mlflow:/mlflow
 
   postgres:
     image: postgres:13

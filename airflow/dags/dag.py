@@ -34,7 +34,7 @@ with DAG(
             os.environ["RAKUTEN_DB_NAME"].lstrip("/"),
         )
         
-        conn = duckdb.connect(database=duckdb_path, read_only=False)
+        conn = duckdb.connect(database=duckdb_path, read_only=True, check_same_thread = False)
 
         cols = [
             "designation",
