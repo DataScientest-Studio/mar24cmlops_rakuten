@@ -93,6 +93,7 @@ data/tmp/*
 mlflow/*
 
 airflow/*
+!airflow/dags
 
 # Spyder
 .spyproject/
