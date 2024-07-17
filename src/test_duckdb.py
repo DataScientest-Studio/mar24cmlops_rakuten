@@ -22,6 +22,12 @@ result = conn.sql(
 
 print(result)
 
+result = conn.sql(
+    f"SELECT * FROM rolling_metrics limit 10"
+).df()
+
+print(result)
+
 
 #     cols = [
 #         "designation",

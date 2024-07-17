@@ -137,12 +137,84 @@ def retrieve_data_and_predict(**kwargs):
     # Update the last successful date for the next run
     write_last_successful_date(next_date)
 
-def insert_accuracy_into_db():
+def compute_rolling_metrics():
     """
-    Placeholder function to simulate the insertion of accuracy data into a database.
+    Computes rolling metrics (5-day moving average, standard deviation, and variance)
+    for each model's accuracy and inserts the results into the rolling_metrics table.
     """
-    print("Accuracy inserted")
+    load_dotenv(".envp/.env.airflow")
 
+    # Define the path to the DuckDB database
+    duckdb_path = os.path.join(
+        resolve_path(os.environ["DATA_PATH"]),
+        os.environ["RAKUTEN_DB_NAME"].lstrip("/"),
+    )
+
+    # Connect to the DuckDB database
+    conn = duckdb.connect(database=duckdb_path, read_only=True)
+
+    # Retrieve the accuracy data from the last 5 days
+    accuracy_df = conn.sql("SELECT * FROM accuracy_daily ORDER BY date DESC LIMIT 5").df()
+    conn.close()
+    if accuracy_df.empty:
+        print("No data found in accuracy_daily table.")
+        return
+
+    # Compute rolling metrics
+    rolling_metrics_df = accuracy_df.set_index('date').sort_index().rolling(window=5).agg(['mean', 'std', 'var']).dropna()
+
+    # Flatten the multi-level columns
+    rolling_metrics_df.columns = ['_'.join(col).strip() for col in rolling_metrics_df.columns.values]
+
+    # Reset index to include 'date' as a column
+    rolling_metrics_df.reset_index(inplace=True)
+
+    # Prepare the data for insertion
+    data_to_insert = []
+
+    for _, row in rolling_metrics_df.iterrows():
+        date = row['date']
+        for model_name in accuracy_df.columns[1:]:  # Skip the 'date' column
+            rolling_mean = row[f"{model_name}_mean"]
+            rolling_std = row[f"{model_name}_std"]
+            rolling_var = row[f"{model_name}_var"]
+            data_to_insert.append((date, model_name, rolling_mean, rolling_std, rolling_var))
+
+    # Insert rolling metrics into the rolling_metrics table
+
+    conn = duckdb.connect(database=duckdb_path, read_only=False)
+
+    # Create the rolling_metrics table if it does not exist
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS rolling_metrics (
+        date DATE,
+        model_name VARCHAR,
+        rolling_mean DOUBLE,
+        rolling_std DOUBLE,
+        rolling_var DOUBLE,
+        PRIMARY KEY (date, model_name)
+    )
+    """
+    conn.execute(create_table_query)
+    conn.close()
+    
+    # Prepare and execute the insertion query
+    
+    insert_query = """
+    INSERT INTO rolling_metrics (date, model_name, rolling_mean, rolling_std, rolling_var)
+    VALUES 
+    """
+    insert_query += ", ".join(
+        f"('{date}', '{model}', {rolling_mean}, {rolling_std}, {rolling_var})"
+        for date, model, rolling_mean, rolling_std, rolling_var in data_to_insert
+    )
+    conn = duckdb.connect(database=duckdb_path, read_only=False)
+    conn.execute(insert_query)
+
+    conn.close()
+    
+    print('Rolling Metrics computed')
+    
 # Define the DAG with arguments and schedule interval
 with DAG(
     dag_id="sim_dag",
@@ -160,10 +232,10 @@ with DAG(
     )
 
     # Define task to insert accuracy data into the database
-    insert_accuracy_into_db = PythonOperator(
-        task_id="insert_accuracy_into_db", 
-        python_callable=insert_accuracy_into_db
+    compute_rolling_metrics = PythonOperator(
+        task_id="compute_rolling_metrics", 
+        python_callable=compute_rolling_metrics
     )
 
 # Set the task dependencies
-retrieve_data_and_predict >> insert_accuracy_into_db
+retrieve_data_and_predict >> compute_rolling_metrics
