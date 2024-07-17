@@ -46,6 +46,7 @@ class tf_trimodel:
         self.load_txt_utils()
         self.load_img_utils()
         self.load_model_utils()
+        self.get_model_path()
 
     def get_model_path(self):
         """
@@ -57,7 +58,10 @@ class tf_trimodel:
         folder = (
             "production_model" if self.model_type == "production" else "staging_models"
         )
-        return resolve_path(f"models/{folder}/{self.model_name}/{self.version}/")
+        self.model_path = resolve_path(
+            f"models/{folder}/{self.model_name}/{self.version}/"
+        )
+        return self.model_path
 
     def load_txt_utils(self):
         """
@@ -121,19 +125,28 @@ class tf_trimodel:
             np.expand_dims(img_array, axis=0)
         )
 
-    def _predict(self, text_designation, text_description, image):
-        # Prétraitement du texte
+    def _txt_processing(self, text_designation, text_description):
         text = str(text_description) + " " + str(text_designation)
         sequence = self.tokenizer.texts_to_sequences([text])
         padded_sequence = pad_sequences(sequence, maxlen=100)
 
-        # Chargement et prétraitement de l'image
+        return padded_sequence
+
+    def _img_processing(self, image):
         if isinstance(image, str):  # Si l'image est un chemin
             img_array = self.path_to_img(image)
         elif isinstance(image, bytes):  # Si l'image est en bytes
             img_array = self.byte_to_img(image)
         else:
             raise ValueError("Image must be a file path or bytes.")
+        return img_array
+
+    def _predict(self, text_designation, text_description, image):
+        # Prétraitement du texte
+        padded_sequence = self._txt_processing(text_designation, text_description)
+
+        # Chargement et prétraitement de l'image
+        img_array = self._img_processing(image)
 
         # Prédiction avec les modèles
         text_pred = self.lstm.predict(padded_sequence)
@@ -182,6 +195,21 @@ class tf_trimodel:
 
         return predictions
 
+    def _predict_from_dataframe_concatenate(self, df):
+        predictions = []
+
+        for index, row in df.iterrows():
+            text_designation = row["designation"]
+            text_description = row["description"]
+            image_path = row["image_path"]
+
+            prediction_result = self.predict(
+                text_designation, text_description, image_path
+            )
+            predictions.append(prediction_result)
+
+        return predictions
+
     def predict(self, text_designation, text_description, image):
         result = self._predict(text_designation, text_description, image)
         combined_class = result["combined_prediction"]["class"]
@@ -190,8 +218,6 @@ class tf_trimodel:
 
 
 # Exemple d'utilisation
-
-# model = tf_trimodel("tf_trimodel", "20240708_19-15-54", "production")
 
 # text_designation = "Jeu video"
 # text_description = "Titi et les bijoux magiques jeux video enfants gameboy advance"

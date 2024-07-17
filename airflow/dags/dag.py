@@ -1,12 +1,9 @@
 from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.operators.python import PythonOperator
-import datetime
-from api.utils.get_models import list_model_repository_folders
 import os
 from dotenv import load_dotenv
 from api.utils.resolve_path import resolve_path
-from api.utils.make_db import process_listing
 from api.utils.predict import predict_from_model_and_df
 from mlprojects.production.tf_trimodel_extended import tf_trimodel_extended
 from api.utils.metrics import accuracy_from_df
@@ -33,8 +30,7 @@ with DAG(
             os.environ["RAKUTEN_DB_NAME"].lstrip("/"),
         )
 
-        conn = duckdb.connect(
-            database=duckdb_path, read_only=True)
+        conn = duckdb.connect(database=duckdb_path, read_only=True)
 
         cols = [
             "designation",
