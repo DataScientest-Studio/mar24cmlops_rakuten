@@ -137,14 +137,18 @@ with DAG(
     start_date=days_ago(2),
     schedule_interval="*/10 * * * *",  # Run every 10 minutes
     catchup=False,
+    tags= ['marc24mlops']
 ) as dag:
     
     wait_for_sim_dag = ExternalTaskSensor(
         task_id='wait_for_sim_dag',
         external_dag_id='sim_dag',
         external_task_id='end_task',
-        mode='reschedule',
-        timeout=30,
+        mode='poke',  
+        timeout=600,  
+        poke_interval=60, 
+        retries=5,  
+        retry_delay=timedelta(minutes=1),  
     )
     
     # Define task to evaluate model performance

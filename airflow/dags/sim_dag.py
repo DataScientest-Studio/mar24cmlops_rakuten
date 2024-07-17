@@ -222,8 +222,9 @@ with DAG(
     default_args=default_args,
     description="Simulates a day use of Rakuten Website",
     start_date=days_ago(2),
-    schedule_interval="*/3 * * * *",  # Run every 3 minutes
+    schedule_interval="*/10 * * * *",  # Run every 10 minutes
     catchup=False,
+    tags= ['marc24mlops']
 ) as dag:
     # Define task to retrieve data and make predictions
     retrieve_data_and_predict = PythonOperator(
