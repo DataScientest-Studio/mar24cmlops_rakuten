@@ -3,7 +3,7 @@ from api.utils.resolve_path import resolve_path
 from api.utils.get_models import get_model_latest_version
 
 
-def predict_from_list_models(models, designation, image_path):
+def predict_from_list_models(models, description, designation, image_path):
     """
     Generate predictions from a list of models for a given designation and image.
 
@@ -17,7 +17,7 @@ def predict_from_list_models(models, designation, image_path):
     """
     predictions = {}
     for i, model in enumerate(models, start=1):
-        pred = model.predict(designation, image_path)
+        pred = model.predict(description, designation, image_path)
         predictions[f"{model.model_name}_{model.version}_{model.model_type}"] = pred
     return predictions
 
@@ -89,6 +89,29 @@ def load_models_from_file(cfg_path, model_list_file):
         models.append(model_instance)
 
     return models
+
+
+def predict_from_model_and_df(model, df):
+    """
+    Makes predictions from a model and updates the DataFrame with the prediction results.
+
+    Args:
+    - model: The model used to make predictions. Must have 'model_name', 'version', and 'model_type' attributes.
+    - df (pd.DataFrame): The DataFrame on which predictions will be made.
+
+    Returns:
+    - pd.DataFrame: The DataFrame updated with a new column for the predictions.
+    """
+    # Perform predictions
+    result = model._predict_from_dataframe_concatenate(df)
+
+    # Create the column name from the model's attributes
+    colname = f"{model.model_name}_{model.version}_{model.model_type}"
+
+    # Add the prediction results to the DataFrame
+    df[colname] = result
+
+    return df
 
 
 # load_dotenv(resolve_path('.env/.env.development'))

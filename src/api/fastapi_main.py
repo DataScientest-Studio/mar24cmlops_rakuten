@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     global aws_config_path, duckdb_path, encrypted_file_path, conn, mdl_list, s3_conn
 
     # Load environment variables from .env file
-    env_path = resolve_path(".env/.env.development")
+    env_path = resolve_path(".envp/.env.development")
     load_dotenv(env_path)
 
     # Convert paths to absolute paths
@@ -70,16 +70,13 @@ async def lifespan(app: FastAPI):
         download_initial_db(aws_config_path, duckdb_path)
         print("Database Successfully Downloaded")
 
-    # Load DuckDB connection
-    conn = duckdb.connect(database=duckdb_path, read_only=False)
-
     # Créer une connexion S3
     s3_conn = create_s3_conn_from_creds(aws_config_path)
 
     yield
 
     # Clean up resources
-    conn.close()
+
     s3_conn.close()
 
     # upload_db
@@ -117,13 +114,15 @@ def authenticate_user(username: str, password: str):
     Returns:
         bool: True if the user is authenticated, False otherwise.
     """
+    conn = duckdb.connect(database=duckdb_path, read_only=True)
     cursor = conn.execute(
         f"SELECT hashed_password FROM dim_user WHERE username = '{username}'"
     )
     result = cursor.fetchone()
     if not result:
+        conn.close()
         return False
-
+    conn.close()
     hashed_password = result[0]
     return verify_password(password, hashed_password)
 
@@ -139,10 +138,13 @@ def get_user_access_rights(username: str):
     Returns:
         str: Access Rights from the username
     """
+    conn = duckdb.connect(database=duckdb_path, read_only=True)
     cursor = conn.execute(
         f"SELECT access_rights FROM dim_user WHERE username = '{username}'"
     )
+
     access_right = cursor.fetchone()[0]
+    conn.close()
     return access_right
 
 
@@ -233,7 +235,7 @@ async def read_listing(listing_id: int, current_user: dict = Depends(get_current
     Returns:
         dict: Dictionary containing listing description.
     """
-    # Dummy logic to retrieve listing description based on listing_id
+    conn = duckdb.connect(database=duckdb_path, read_only=True)
     cols = [
         "designation",
         "description",
@@ -253,8 +255,9 @@ async def read_listing(listing_id: int, current_user: dict = Depends(get_current
     )
     result = cursor.fetchone()
     if not result:
+        conn.close()
         raise HTTPException(status_code=404, detail="Listing not found")
-
+    conn.close()
     response = dict(zip(cols, result))
 
     return response
@@ -276,20 +279,24 @@ async def delete_listing(
         dict: Message indicating success or failure.
     """
     # Logic to check if user has permission to delete listing
+    conn = duckdb.connect(database=duckdb_path, read_only=False)
     cursor = conn.execute(
         f"SELECT user FROM fact_listings WHERE listing_id = {listing_id}"
     )
     result = cursor.fetchone()
     if not result:
+        conn.close()
         log_product_action("delete_listing", 404, current_user["username"], listing_id)
         raise HTTPException(status_code=404, detail="Listing not found")
     if result[0] != current_user["username"]:
+        conn.close()
         log_product_action("delete_listing", 403, current_user["username"], listing_id)
         raise HTTPException(
             status_code=403, detail="This user is not the owner of this listing_id"
         )
     # Logic to delete listing
     conn.execute(f"DELETE FROM fact_listings WHERE listing_id = {listing_id}")
+    conn.close()
     log_product_action("delete_listing", 200, current_user["username"], listing_id)
     return {"message": "Listing deleted successfully"}
 
@@ -313,7 +320,6 @@ async def listing_submit(
         dict: Response containing the listing ID, product ID, image ID, and prediction result.
     """
     # Build the SQL query for insertion
-
     waiting_datetime = datetime.now()
 
     sql_insert = f"""
@@ -332,6 +338,7 @@ async def listing_submit(
     """
 
     # Execute the insertion query
+    conn = duckdb.connect(database=duckdb_path, read_only=False)
     result = conn.execute(sql_insert).fetchall()[0]
 
     new_listing_id = result[0]
@@ -346,7 +353,9 @@ async def listing_submit(
         image_file.write(listing.image.file.read())
 
     # Predict using the loaded models
-    pred = predict_from_list_models(mdl_list, listing.designation, image_path)
+    pred = predict_from_list_models(
+        mdl_list, listing.description, listing.designation, image_path
+    )
     # Convert prediction dictionary to a JSON string
     pred_json = json.dumps(pred)
 
@@ -358,7 +367,7 @@ async def listing_submit(
     log_product_action(
         "listing_submit", 200, current_user["username"], new_listing_id, pred_json
     )
-
+    conn.close()
     # Construct and return the response
     response = {
         "message": "Listing added successfully",
@@ -386,16 +395,19 @@ async def listing_validate(
         dict: Message indicating success or failure.
     """
     # Check if user has permission to validate listing
+    conn = duckdb.connect(database=duckdb_path, read_only=False)
     cursor = conn.execute(
         f"SELECT user FROM fact_listings WHERE listing_id = {validation.listing_id}"
     )
     result = cursor.fetchone()
     if not result:
+        conn.close()
         log_product_action(
             "listing_validate", 404, current_user["username"], validation.listing_id
         )
         raise HTTPException(status_code=404, detail="Listing not found")
     if result[0] != current_user["username"]:
+        conn.close()
         log_product_action(
             "listing_validate", 403, current_user["username"], validation.listing_id
         )
@@ -419,11 +431,12 @@ async def listing_validate(
             validation.user_prdtypecode,
         )
     except Exception as e:
+        conn.close()
         log_product_action(
             "listing_validate", 500, current_user["username"], validation.listing_id
         )
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
-
+    conn.close()
     return {
         "message": f"Listing {validation.listing_id} validated successfully with user_prdtypecode {validation.user_prdtypecode}"
     }
@@ -446,15 +459,22 @@ async def predict_listing(
     Returns:
         dict: Response containing the message indicating success or failure.
     """
+    conn = duckdb.connect(database=duckdb_path, read_only=True)
     cursor = conn.execute(
-        f"SELECT designation, productid, imageid FROM fact_listings WHERE listing_id = {listing_id}"
+        f"SELECT description, designation, productid, imageid FROM fact_listings WHERE listing_id = {listing_id}"
     )
     result = cursor.fetchone()
 
     if not result:
+        conn.close()
         raise HTTPException(status_code=404, detail="Listing not found")
 
-    designation, productid, imageid = result[0], result[1], result[2]
+    description, designation, productid, imageid = (
+        result[0],
+        result[1],
+        result[2],
+        result[3],
+    )
     image_path = resolve_path(
         f"data/images/submitted_images/image_{imageid}_product_{productid}.jpg"
     )
@@ -469,13 +489,14 @@ async def predict_listing(
             )
 
         except Exception as e:
+            conn.close()
             raise HTTPException(
                 status_code=500,
                 detail=f"An error occurred while downloading from S3: {e}",
             )
 
-    pred = predict_from_list_models(mdl_list, designation, image_path)
-
+    pred = predict_from_list_models(mdl_list, description, designation, image_path)
+    conn.close()
     # Construct and return the response
     response = {
         "message": "Listing predicted successfully",

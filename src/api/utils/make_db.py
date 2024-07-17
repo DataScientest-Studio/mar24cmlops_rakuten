@@ -1,7 +1,7 @@
 import duckdb
 import pandas as pd
 from api.utils.s3_utils import create_s3_conn_from_creds, download_from_s3, upload_to_s3
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 import os
 from passlib.hash import bcrypt
@@ -10,14 +10,21 @@ from api.utils.resolve_path import resolve_path
 
 def process_listing(listing_csv_path, prdtypecode_csv_path):
     """
-    Process the listing CSV file.
+    Process the listing data from CSV files.
 
     Args:
-    - listing_csv_path (str): Path to the listing CSV file.
-    - prdtypecode_csv_path (str): Path to the Y_train CSV file containing prdtypecodes
-        from the user
+    - listing_csv_path (str): Path to the CSV file containing listing data.
+    - prdtypecode_csv_path (str): Path to the CSV file containing prdtypecodes from the user.
+
     Returns:
-    - listing_df (pd.DataFrame): Processed DataFrame containing listings data.
+    - listing_df (pd.DataFrame): Processed DataFrame containing listings data with additional columns:
+        - 'listing_id': Index of the listing.
+        - 'waiting_datetime': Random datetime within a year from now.
+        - 'validate_datetime': Random datetime within 30 minutes from waiting_datetime.
+        - 'status': Fixed value 'validate'.
+        - 'user': Fixed value 'init_user'.
+        - 'user_prdtypecode': Renamed from 'prdtypecode' column.
+        - 'model_prdtypecode': Column initialized with NaN values.
     """
     listing_df = pd.read_csv(listing_csv_path, index_col=0)
     prdtypecode_df = pd.read_csv(prdtypecode_csv_path, index_col=0)
@@ -31,8 +38,27 @@ def process_listing(listing_csv_path, prdtypecode_csv_path):
     listing_df["listing_id"] = listing_df.index
     listing_df = listing_df.join(prdtypecode_df, how="left")
 
-    listing_df["waiting_datetime"] = datetime.now()
-    listing_df["validate_datetime"] = datetime.now()
+    # Function to generate random timedelta within constraints
+    def generate_random_timedelta():
+        max_days = 365
+        max_hours = 24
+        max_minutes = 60
+
+        random_days = np.random.randint(1, max_days + 1)
+        random_hours = np.random.randint(0, max_hours)
+        random_minutes = np.random.randint(0, max_minutes)
+
+        return timedelta(days=random_days, hours=random_hours, minutes=random_minutes)
+
+    # Apply random timedelta generation using lambda function and apply
+    listing_df["waiting_timedelta"] = listing_df.apply(
+        lambda row: generate_random_timedelta(), axis=1
+    )
+    listing_df["waiting_datetime"] = datetime.now() + listing_df["waiting_timedelta"]
+    listing_df["validate_datetime"] = listing_df["waiting_datetime"] + timedelta(
+        minutes=np.random.randint(1, 16)
+    )
+
     listing_df["status"] = "validate"
     listing_df["user"] = "init_user"
     listing_df = listing_df.rename(columns={"prdtypecode": "user_prdtypecode"})
@@ -181,3 +207,33 @@ def init_db(duckdb_path, is_test=False):
 
     model_prdtypecode_to_varchar_sql = "ALTER TABLE fact_listings ALTER COLUMN model_prdtypecode SET DATA TYPE VARCHAR;"
     duckdb_conn.execute(model_prdtypecode_to_varchar_sql)
+
+
+# # Load environment variables from .env file
+# from dotenv import load_dotenv
+# from api.utils.resolve_path import resolve_path
+# from mlprojects.production.tf_trimodel_extended import tf_trimodel_extended
+# from api.utils.predict import predict_from_model_and_df
+# from api.utils.metrics import accuracy_from_df
+# # Example usage:
+# env_path = resolve_path(".envp/.env.development")
+# load_dotenv(env_path)
+
+# listing_df = process_listing(resolve_path('data/X_train.csv'), resolve_path('data/Y_train.csv'))
+# listing_df["image_path"] = listing_df.apply(
+#     lambda row: resolve_path(
+#         f"data/images/image_train/image_{row['imageid']}_product_{row['productid']}.jpg"
+#     ),
+#     axis=1,
+# )
+
+# to_predict = listing_df.head(10)
+
+# model = tf_trimodel_extended("tf_trimodel", "20240715_08-30-38", "staging")
+
+# predicted_df = predict_from_model_and_df(model, to_predict)
+
+# print(predicted_df)
+
+# acc = accuracy_from_df(predicted_df, 'tf_trimodel_20240715_08-30-38_staging', 'user_prdtypecode')
+# print(acc)
