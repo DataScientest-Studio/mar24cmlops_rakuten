@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from api.utils.resolve_path import resolve_path
+
 # from api.utils.make_db import process_listing
 # from api.utils.predict import load_models_from_file, predict_from_model_and_df
 # from mlprojects.production.tf_trimodel_extended import tf_trimodel_extended
@@ -16,15 +17,11 @@ duckdb_path = os.path.join(
 )
 
 conn = duckdb.connect(database=duckdb_path, read_only=True)
-result = conn.sql(
-    f"SELECT * FROM accuracy_daily limit 10"
-).df()
+result = conn.sql(f"SELECT * FROM accuracy_daily limit 10").df()
 
 print(result)
 
-result = conn.sql(
-    f"SELECT * FROM rolling_metrics limit 10"
-).df()
+result = conn.sql(f"SELECT * FROM rolling_metrics limit 10").df()
 
 print(result)
 
