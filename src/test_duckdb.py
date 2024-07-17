@@ -17,11 +17,11 @@ duckdb_path = os.path.join(
 )
 
 conn = duckdb.connect(database=duckdb_path, read_only=True)
-result = conn.sql(f"SELECT * FROM accuracy_daily limit 10").df()
+result = conn.sql("SELECT * FROM accuracy_daily limit 10").df()
 
 print(result)
 
-result = conn.sql(f"SELECT * FROM rolling_metrics limit 10").df()
+result = conn.sql("SELECT * FROM rolling_metrics limit 10").df()
 
 print(result)
 

@@ -4,11 +4,8 @@ from airflow.operators.python import PythonOperator
 import os
 from dotenv import load_dotenv
 from api.utils.resolve_path import resolve_path
-from api.utils.predict import predict_from_model_and_df
-from mlprojects.production.tf_trimodel_extended import tf_trimodel_extended
-from api.utils.metrics import accuracy_from_df
 import duckdb
-from datetime import timedelta, datetime
+from datetime import timedelta
 from airflow.sensors.external_task import ExternalTaskSensor
 
 # Define default arguments for the DAG
