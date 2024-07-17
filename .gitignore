@@ -139,3 +139,4 @@ data/rakuten_db.duckdb.wal
 data/test_model/*
 
 **/mlruns/
+data/last_successful_date.json
