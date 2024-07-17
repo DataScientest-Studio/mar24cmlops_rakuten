@@ -93,6 +93,7 @@ data/tmp/*
 mlflow/*
 
 airflow/*
+!airflow/dags
 
 # Spyder
 .spyproject/
@@ -134,3 +135,7 @@ data/rakuten_db.duckdb.wal
 .env
 
 !data/zazie.jpg
+
+data/test_model/*
+
+**/mlruns/

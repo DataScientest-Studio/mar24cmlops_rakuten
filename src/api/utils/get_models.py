@@ -250,7 +250,9 @@ def get_model_latest_version(cfg_path, is_production, model_name):
         return None
 
 
-def upload_model_to_repository(cfg_path, local_model_folder, model_name, is_production):
+def upload_model_to_repository(
+    cfg_path, local_model_folder, model_name, is_production, version=None
+):
     """
     Upload a model folder to the S3 model repository with datetime-based folder name.
 
@@ -272,12 +274,11 @@ def upload_model_to_repository(cfg_path, local_model_folder, model_name, is_prod
     folder_type = "production" if is_production else "staging"
 
     # Generate the current datetime string
-    current_datetime = datetime.now().strftime("%Y%m%d_%H-%M-%S")
+    if not version:
+        version = datetime.now().strftime("%Y%m%d_%H-%M-%S")
 
     # Define S3 folder prefix
-    s3_folder_prefix = (
-        f"model_repository/{folder_type}/{model_name}/{current_datetime}/"
-    )
+    s3_folder_prefix = f"model_repository/{folder_type}/{model_name}/{version}/"
 
     # Upload the local folder to S3
     upload_folder_to_s3(cfg_path, local_model_folder, s3_folder_prefix)

@@ -1,13 +1,13 @@
 from fastapi.testclient import TestClient
-from api.fastapi_main import app, lifespan
-import pytest
+from api.fastapi_main import app
 from api.utils.resolve_path import resolve_path
+
 
 def test_api():
     """
     Test suite for the FastAPI application.
     """
-    
+
     with TestClient(app) as client:
         # Test the root endpoint
         response = client.get("/")
@@ -25,16 +25,23 @@ def test_api():
         assert response.json()["token_type"] == "bearer"
 
         # Log in to get the access token
-        login_response = client.post("/token", data={"username": "jc", "password": "jc"})
+        login_response = client.post(
+            "/token", data={"username": "jc", "password": "jc"}
+        )
         token = login_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
         # Test the listing_submit endpoint
-        with open(resolve_path('data/zazie.jpg'), "rb") as img:
+        with open(resolve_path("data/zazie.jpg"), "rb") as img:
             files = {"image": ("zazie.jpg", img, "image/jpeg")}
-            params = {"description": "Livre Zazie dans le métro", "designation": "Livre de Raymond Queneau"}
+            params = {
+                "description": "Livre Zazie dans le métro",
+                "designation": "Livre de Raymond Queneau",
+            }
 
-            response = client.post("/listing_submit", headers=headers, params=params, files=files)
+            response = client.post(
+                "/listing_submit", headers=headers, params=params, files=files
+            )
 
             assert response.status_code == 200
             assert "prediction" in response.json()
