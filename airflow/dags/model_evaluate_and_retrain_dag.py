@@ -9,6 +9,7 @@ from mlprojects.production.tf_trimodel_extended import tf_trimodel_extended
 from api.utils.metrics import accuracy_from_df
 import duckdb
 from datetime import timedelta, datetime
+from airflow.sensors.external_task import ExternalTaskSensor
 
 # Define default arguments for the DAG
 default_args = {
@@ -116,6 +117,10 @@ def retrain(**kwargs):
     retrain_decision = kwargs['ti'].xcom_pull(key='retrain_decision', task_ids='evaluate')
     count_staging_better = kwargs['ti'].xcom_pull(key='count_staging_better', task_ids='evaluate')
     model_instability = kwargs['ti'].xcom_pull(key='model_instability', task_ids='evaluate')
+    
+    # Notify if staging model is consistently better
+    if count_staging_better >= 3:
+        print("Staging model outperforms production model in 3 or more out of the last 5 runs. Consider switching to staging model.")
 
     if retrain_decision:
         print("Retraining model due to better performance of the staging model.")
@@ -133,6 +138,15 @@ with DAG(
     schedule_interval="*/10 * * * *",  # Run every 10 minutes
     catchup=False,
 ) as dag:
+    
+    wait_for_sim_dag = ExternalTaskSensor(
+        task_id='wait_for_sim_dag',
+        external_dag_id='sim_dag',
+        external_task_id='end_task',
+        mode='reschedule',
+        timeout=30,
+    )
+    
     # Define task to evaluate model performance
     evaluate = PythonOperator(
         task_id="evaluate",
@@ -148,4 +162,4 @@ with DAG(
     )
 
 # Set the task dependencies
-evaluate >> retrain
+wait_for_sim_dag >> evaluate >> retrain

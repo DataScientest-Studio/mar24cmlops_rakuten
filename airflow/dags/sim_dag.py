@@ -11,6 +11,7 @@ from api.utils.predict import load_models_from_file, predict_from_model_and_df
 from mlprojects.production.tf_trimodel_extended import tf_trimodel_extended
 from api.utils.metrics import accuracy_from_df
 import duckdb
+from airflow.sensors.external_task import ExternalTaskMarker
 
 # Define default arguments for the DAG
 default_args = {
@@ -236,6 +237,11 @@ with DAG(
         task_id="compute_rolling_metrics", 
         python_callable=compute_rolling_metrics
     )
-
+    
+    end_task = ExternalTaskMarker(
+            task_id='end_task',
+            external_dag_id='model_evaluate_and_retrain_dag',
+            external_task_id=None,
+        )
 # Set the task dependencies
-retrieve_data_and_predict >> compute_rolling_metrics
+retrieve_data_and_predict >> compute_rolling_metrics >> end_task
